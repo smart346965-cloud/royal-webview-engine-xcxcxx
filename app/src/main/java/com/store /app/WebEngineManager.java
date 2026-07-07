@@ -1,14 +1,13 @@
 package com.store.app;
 
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.*;
-
-import androidx.browser.customtabs.CustomTabsIntent;
 
 public class WebEngineManager {
 
@@ -51,11 +50,8 @@ public class WebEngineManager {
     public void init() {
         // 👑 1. حارس العودة الساخنة (Warm Resume Guard)
         if (RoyalWebViewHost.isReady() && webView.getUrl() != null && !webView.getUrl().equals("about:blank")) {
-            android.util.Log.i("RoyalEngine", "🔥 Warm Resume Detected! Skipping Splash, but Re-binding Clients.");
-
-            // 🛡️ درع الوميض الثالث: إجبار الويب فيو على الظهور فوراً بكامل طاقته
+            android.util.Log.i("RoyalEngine", "🔥 Warm Resume Detected! Skipping Splash.");
             webView.setAlpha(1f);
-
             removeSplashInstantly();
             attachClients();
             return;
@@ -84,7 +80,7 @@ public class WebEngineManager {
             if (splashOverlay != null) {
                 splashOverlay.animate()
                         .alpha(0f)
-                        .setDuration(300) // تلاشي سينمائي ناعم جداً
+                        .setDuration(300) 
                         .withEndAction(this::removeSplashInstantly)
                         .start();
             }
@@ -94,21 +90,15 @@ public class WebEngineManager {
     private void configureSettings() {
         webView.setBackgroundColor(Color.TRANSPARENT);
         webView.setAlpha(0f);
-
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setWillNotDraw(false);
-
-        // 👑 إعادة إحساس الـ Native (الارتداد عند نهاية الصفحة)
         webView.setOverScrollMode(WebView.OVER_SCROLL_IF_CONTENT_SCROLLS);
-
         webView.setHorizontalScrollBarEnabled(false);
         webView.setVerticalScrollBarEnabled(false);
 
-        // الإعدادات الأساسية (باقي الإعدادات القوية تمت في RoyalHybridEngine)
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
-        // 👑 تم حذف setDatabaseEnabled لأنه Deprecated ويستهلك I/O بلا فائدة
         settings.setAllowFileAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSupportMultipleWindows(false);
@@ -116,80 +106,47 @@ public class WebEngineManager {
     }
 
     private void attachClients() {
-        // جلب عميل Capacitor الأصلي لغلافه (Wrapper Pattern)
-        WebViewClient capacitorClient =
-                ((com.getcapacitor.BridgeActivity) context)
-                        .getBridge().getWebViewClient();
-
+        // 🚀 وداعاً Capacitor! الـ WebViewClient الآن خالص لمحركنا
         webView.setWebViewClient(new WebViewClient() {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                // نترك Capacitor يقوم بعمله
-                if (capacitorClient != null) {
-                    capacitorClient.onPageFinished(view, url);
-                }
-
-                // 🚀 حقن احتياطي آمن (Safe Fallback Injection)
-                // يضمن عمل العضلات فوراً حتى لو تأخر رسم الإطار الأول
                 WebEnhancer.apply(view, context);
             }
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
-                // 1. إظهار الويب فيو بنعومة
                 if (view.getAlpha() == 0f) {
                     view.animate().alpha(1f).setDuration(180).start();
-                }
-
-                // 2. السماح لـ Capacitor بالعمل
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && capacitorClient != null) {
-                    capacitorClient.onPageCommitVisible(view, url);
                 }
 
                 if (trustedHost == null && url != null) {
                     setTrustedOrigin(url);
                 }
 
-                // 3. حقن العضلات
                 WebEnhancer.apply(view, context);
                 syncStatusBarColor(view);
 
-                // 👑 4. بروتوكول الاكتمال البصري (Visual Completeness Protocol):
-                // نحن لن نخفي السبلاش هنا! سننتظر إشارة `hideSplash` من الجافاسكريبت.
-                // لكن، كإجراء أمان (Fail-safe)، إذا تعطل الجافاسكريبت، سنخفيه بعد 2.5 ثانية كحد أقصى.
                 view.postDelayed(() -> {
                     if (!splashChecker.isRemoved()) {
-                        android.util.Log.w("RoyalEngine", "⏳ Fail-safe: Hiding splash due to JS timeout.");
                         removeSplashSmoothly();
                     }
                 }, 2500);
             }
 
-            // 🚑 2. الإنعاش التلقائي عند انهيار محرك كروم (Renderer Crash Recovery)
             @Override
             public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-                android.util.Log.e("RoyalEngine", "☠️ FATAL: Chromium Renderer crashed! Initiating Auto-Recovery...");
-
-                // إخبار Capacitor بالكارثة
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && capacitorClient != null) {
-                    capacitorClient.onRenderProcessGone(view, detail);
-                }
-
-                // تدمير الويب فيو الميت وإعادة بناء واحد جديد
+                android.util.Log.e("RoyalEngine", "☠️ FATAL: Chromium Renderer crashed! Auto-Recovery...");
                 RoyalWebViewHost.destroy();
                 if (activity != null) {
                     RoyalWebViewHost.create(activity.getApplicationContext());
-                    activity.recreate(); // إعادة تشغيل الشاشة بأمان
+                    activity.recreate();
                 }
                 return true;
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && capacitorClient != null) {
-                    capacitorClient.onReceivedError(view, request, error);
-                }
                 if (request != null && request.isForMainFrame()) {
                     view.loadUrl("file:///android_asset/public/offline.html");
                 }
@@ -198,37 +155,19 @@ public class WebEngineManager {
             @SuppressWarnings("deprecation")
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                if (capacitorClient != null) {
-                    capacitorClient.onReceivedError(view, errorCode, description, failingUrl);
-                }
                 view.loadUrl("file:///android_asset/public/offline.html");
             }
 
-            // 🌐 Royal Network Engine Interceptor
+            // 🌐 فلتر الشبكة الملكي (The Royal Interceptor)
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-
-                // 1️⃣ إعطاء محرك الشبكة الملكي فرصة أولاً
                 WebResourceResponse royalResponse = RoyalNetworkEngine.interceptRequest(request);
                 if (royalResponse != null) {
                     return royalResponse;
                 }
-
-                // 2️⃣ إعطاء Capacitor فرصة للتعامل مع طلباته الداخلية
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP && capacitorClient != null) {
-                    WebResourceResponse capacitorResponse =
-                            capacitorClient.shouldInterceptRequest(view, request);
-
-                    if (capacitorResponse != null) {
-                        return capacitorResponse;
-                    }
-                }
-
-                // 3️⃣ ترك Chromium يتعامل مع الطلب
                 return super.shouldInterceptRequest(view, request);
             }
 
-            // 🤝 3. معالجة الروابط الاحترافية (Zero-Friction Routing)
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (request != null && request.getUrl() != null) {
@@ -237,20 +176,15 @@ public class WebEngineManager {
 
                     if (scheme == null) return false;
 
-                    // 1. إذا كان الرابط تطبيقاً خارجياً (واتساب، اتصال)، نرسله لمنطقنا فوراً
                     if (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("whatsapp") || scheme.equals("intent")) {
                         return handleUriLogic(uri, request.isForMainFrame());
                     }
 
-                    // 2. إذا كان الرابط ويب (http/https)
                     if (scheme.equals("http") || scheme.equals("https")) {
-                        // إذا كان رابطاً خارجياً (ليس Gymshark)، نرسله لمنطقنا (Custom Tabs)
                         if (!isSameOrigin(uri)) {
                             return handleUriLogic(uri, request.isForMainFrame());
                         }
-                        // 👑 السحر هنا: إذا كان رابطاً داخلياً (Gymshark)، نعود بـ false فوراً!
-                        // هذا يمنع الجافا من التدخل، ويترك المتصفح يطير بالرابط في 0 ملي ثانية.
-                        return false;
+                        return false; 
                     }
                 }
                 return false;
@@ -280,8 +214,7 @@ public class WebEngineManager {
     }
 
     private void syncStatusBarColor(WebView view) {
-        if (activity == null || activity.isFinishing()) return; // حماية من الانهيار
-
+        if (activity == null || activity.isFinishing()) return; 
         view.evaluateJavascript(
                 "(function(){return window.getComputedStyle(document.body).backgroundColor;})();",
                 value -> {
@@ -322,13 +255,12 @@ public class WebEngineManager {
 
     private boolean handleUriLogic(Uri uri, boolean isMainFrame) {
         if (!isMainFrame) return false;
-
         String scheme = uri.getScheme();
         if (scheme == null) return true;
 
         if (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("whatsapp") || scheme.equals("intent")) {
             try {
-                context.startActivity(new android.content.Intent(android.content.Intent.ACTION_VIEW, uri));
+                context.startActivity(new Intent(Intent.ACTION_VIEW, uri));
             } catch (Exception ignored) {}
             return true;
         }
@@ -337,7 +269,9 @@ public class WebEngineManager {
             if (isSameOrigin(uri)) {
                 return false;
             } else {
-                new CustomTabsIntent.Builder().build().launchUrl(context, uri);
+                try {
+                    context.startActivity(new Intent(Intent.ACTION_VIEW, uri));
+                } catch (Exception ignored) {}
                 return true;
             }
         }
