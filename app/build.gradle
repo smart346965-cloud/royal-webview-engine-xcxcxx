@@ -1,74 +1,36 @@
 plugins {
-    alias(libs.plugins.androidApplication)
-}
-
-// 👑 1. قراءة ملف إعدادات العميل من المجلد الرئيسي (Root)
-def clientProps = new Properties()
-def propsFile = rootProject.file("client-config.properties")
-if (propsFile.exists()) {
-    clientProps.load(new FileInputStream(propsFile))
-} else {
-    throw new GradleException("❌ FATAL: client-config.properties not found in root directory!")
+    id 'com.android.application'
 }
 
 android {
-    namespace 'com.example.mytwa_smart' // هذا يبقى ثابتاً للكود الداخلي
-    compileSdk 36
+    namespace 'com.store.app'
+    compileSdk 34 // المعيار الحديث للأداء
 
     defaultConfig {
-        // حقن معرف التطبيق الخاص بـ Gymshark مباشرة
-        applicationId "com.royal.gymshark"
-        minSdk 24
-        targetSdk 36
+        applicationId "com.store.app"
+        minSdk 24 // مناسب جداً لمحركات الويب عالية الأداء
+        targetSdk 34
         versionCode 1
         versionName "1.0"
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-
-        // حقن البيانات مباشرة لقطع الشك باليقين
-        manifestPlaceholders = [
-            clientUrl: "https://smart346965-cloud.github.io/",
-            appName: "Gymshark Store"
-        ]
-
-        resValue "bool", "is_light_bg", "true"
-
-        resValue "bool",
-                "android_offline_enabled",
-                clientProps.getProperty(
-                        "ANDROID_OFFLINE",
-                        "true"
-                )
     }
 
     buildTypes {
         release {
-            minifyEnabled false
-            // 👑 الإصلاح هنا: إضافة كلمة -android- للاسم ليتعرف عليه النظام
+            minifyEnabled true // ضغط الكود وتقليص الحجم
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    buildFeatures {
-        buildConfig true
-    }
 }
 
 dependencies {
-    implementation libs.appcompat
-    implementation libs.material
-    implementation libs.activity
-    implementation libs.constraintlayout
-    implementation libs.androidx.browser
-    implementation libs.androidbrowserhelper
-    implementation libs.onesignal
-
-    // 👑 حقن مكتبة شاشة الإقلاع الرسمية والعصرية من جوجل
-    implementation libs.androidx.core.splashscreen
-
-    testImplementation libs.junit
-    androidTestImplementation libs.ext.junit
-    androidTestImplementation libs.espresso.core
+    // مكتبات أندرويد الصافية والأساسية فقط - لا وجود لكاباسيتور!
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation 'com.google.android.material:material:1.11.0'
+    implementation 'androidx.activity:activity:1.8.0'
 }
