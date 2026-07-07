@@ -1,126 +1,95 @@
-Enterpackage com.store.app;
+herepackage com.store.app;
 
 import android.os.Bundle;
 import android.view.View;
+import android.view.ViewGroup;
 import android.webkit.WebView;
+import android.widget.ProgressBar;
+import androidx.activity.OnBackPressedCallback;
+import androidx.appcompat.app.AppCompatActivity;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 
-import com.getcapacitor.BridgeActivity;
-
-public class MainActivity extends BridgeActivity {
+// 👑 وراثة AppCompatActivity الصافية بدلاً من BridgeActivity
+public class MainActivity extends AppCompatActivity {
 
     private boolean splashRemoved = false;
     private WebEngineManager engineManager;
+    private WebView activeWebView;
 
-    private WebView immortalWebView;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        // 🛡️ درع الوميض: قبل أي بناء للواجهة
+        setTheme(R.style.AppTheme_NoSplash);
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.WHITE));
+        
+        super.onCreate(savedInstanceState);
 
-    // 1️⃣ إزالة @Override وتغيير الاسم لتتوافق مع Capacitor 6
-    private WebView setupImmortalWebView() {
-        // إنشاء الويبفيو الخالد إذا لم يكن موجوداً
+        // تفعيل التصحيح التقني
+        WebView.setWebContentsDebuggingEnabled(true);
+
+        // 1️⃣ استدعاء وتهيئة الويب فيو الخالد مباشرة (لا وسيط بعد اليوم)
         if (!RoyalWebViewHost.isReady()) {
             RoyalWebViewHost.create(getApplicationContext());
         }
+        activeWebView = RoyalWebViewHost.attach(this);
 
-        // حماية الخبير التقني: منع إعادة الربط
-        if (immortalWebView == null) {
-            immortalWebView = RoyalWebViewHost.attach(this);
+        // 2️⃣ تعيين المحرك الخالد كواجهة أساسية مباشرة (0ms احتكاك)
+        setContentView(activeWebView);
+
+        // 3️⃣ توجيه المحرك للهدف (رابط تجريبي عالي الأداء)
+        String targetUrl = "https://www.your-luxury-store.com"; 
+        if (activeWebView.getUrl() == null || !activeWebView.getUrl().startsWith("http")) {
+            activeWebView.loadUrl(targetUrl);
         }
 
-        return immortalWebView;
-    }
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        setTheme(R.style.AppTheme_NoSplash);
-
-        // 🛡️ درع الوميض الثاني: تلوين نافذة الأندرويد بالأبيض بدلاً من null (الذي يعطي سواداً)
-        getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.WHITE));
-
-        // 1️⃣ Capacitor يبني غرفته ويضع فيها الويب فيو الافتراضي (الضعيف)
-        super.onCreate(savedInstanceState);
-
-        android.webkit.WebView.setWebContentsDebuggingEnabled(true);
-
-        // 2️⃣ نستدعي محركنا الخالد (الشبح الموجود في الذاكرة والذي يحمل Gymshark)
-        WebView immortalWv = setupImmortalWebView();
-
-        // 3️⃣ ⚔️ عملية "التبديل الجزيئي" (Atomic View Swap) ⚔️
-        WebView defaultWv = getBridge().getWebView();
-
-        if (defaultWv != null && defaultWv != immortalWv) {
-
-            String currentUrl = defaultWv.getUrl(); // 🔥 أخذ الرابط الحالي
-
-            android.view.ViewGroup parent = (android.view.ViewGroup) defaultWv.getParent();
-
-            if (parent != null) {
-
-                int index = parent.indexOfChild(defaultWv);
-                android.view.ViewGroup.LayoutParams params = defaultWv.getLayoutParams();
-
-                parent.removeView(defaultWv);
-
-                parent.addView(immortalWv, index, params);
-
-                // 🔥 نقل الصفحة الحالية للمحرك الجديد
-                if (currentUrl != null) {
-                    immortalWv.loadUrl(currentUrl);
+        // 4️⃣ نظام التحكم بالرجوع المستقل هندسياً (Native Back Press)
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (activeWebView != null && activeWebView.canGoBack()) {
+                    activeWebView.post(() -> activeWebView.goBack());
+                } else {
+                    moveTaskToBack(true);
                 }
-
-                defaultWv.destroy();
-
-                android.util.Log.i("RoyalEngine", "⚔️ Atomic Swap Complete");
             }
-        }
+        });
 
-        // 4️⃣ الآن المحرك النشط والمرئي هو محركنا الخالد
-        WebView activeWebView = immortalWv;
-
-        getOnBackPressedDispatcher().addCallback(this,
-                new androidx.activity.OnBackPressedCallback(true) {
-                    @Override
-                    public void handleOnBackPressed() {
-                        // حماية زر الرجوع
-                        WebView currentWv = RoyalWebViewHost.isReady() ? RoyalWebViewHost.get() : getBridge().getWebView();
-
-                        if (currentWv != null && currentWv.canGoBack()) {
-                            // 👑 وضع الرجوع في طابور الـ UI لمنع التقطيع (Micro-blocking)
-                            currentWv.post(() -> currentWv.goBack());
-                        } else {
-                            // إخفاء التطبيق في الخلفية بدلاً من قتله
-                            moveTaskToBack(true);
-                        }
-                    }
-                });
-
+        // 5️⃣ الحصانة البصرية وتخصيص شريط النظام
         SystemUI.applyKingMode(this, activeWebView);
         SystemUI.setDynamicIcons(this.getWindow(), true);
 
-        // Splash Overlay
+        // 6️⃣ بناء طبقة الـ Splash Screen برمجياً كما صممتها
+        setupSplashScreen();
+    }
+
+    private void setupSplashScreen() {
+        // شاشة التحميل (Overlay)
         final View splashOverlay = new View(this);
-        splashOverlay.setBackgroundColor(android.graphics.Color.parseColor("#F3F4F6"));
+        splashOverlay.setBackgroundColor(Color.parseColor("#F3F4F6"));
         splashOverlay.setAlpha(1f);
 
-        addContentView(splashOverlay, new android.view.ViewGroup.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+        addContentView(splashOverlay, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // ProgressBar
-        final android.widget.ProgressBar progressBar =
-                new android.widget.ProgressBar(this, null,
-                        android.R.attr.progressBarStyleHorizontal);
-
+        // شريط التقدم النحيف (ProgressBar)
+        final ProgressBar progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progressBar.setMax(100);
         progressBar.setProgress(0);
         progressBar.setIndeterminate(false);
-        progressBar.setLayoutParams(new android.view.ViewGroup.LayoutParams(
-                android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                6
-        ));
-
+        
+        ViewGroup.LayoutParams progressParams = new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 6);
+        progressBar.setLayoutParams(progressParams);
         progressBar.setScaleY(0.6f);
-        addContentView(progressBar, progressBar.getLayoutParams());
+        
+        addContentView(progressBar, progressParams);
 
-        // إنشاء محرك الموقع (نمرر له النسخة الحية والمرئية)
+        // 7️⃣ تهيئة الـ WebEngineManager
         engineManager = new WebEngineManager(
                 this,
                 activeWebView,
@@ -129,24 +98,23 @@ public class MainActivity extends BridgeActivity {
                 () -> splashRemoved = true,
                 () -> splashRemoved
         );
-
         engineManager.init();
 
-        // Fail-safe
-        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-            WebView wv = RoyalWebViewHost.isReady() ? RoyalWebViewHost.get() : getBridge().getWebView();
-            if (wv != null) {
-                android.util.Log.w("Engine", "Fail-safe: Forced reveal after timeout");
+        // Fail-safe: حماية تجربة المستخدم بإخفاء الشاشة إن حدث تأخير استثنائي
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!splashRemoved && activeWebView != null) {
+                Log.w("RoyalEngine", "Fail-safe: Forced reveal after timeout");
+                splashOverlay.setVisibility(View.GONE);
+                progressBar.setVisibility(View.GONE);
+                splashRemoved = true;
             }
         }, 10000);
     }
 
-    // 4️⃣ تغيير protected إلى public لحل تعارض الصلاحيات
     @Override
-    public void onDestroy() {
-        // الإنقاذ الجراحي: نفصل الويب فيو ونخبئه *قبل* أن يقوم Capacitor بقتله!
+    protected void onDestroy() {
+        // 🛡️ الإنقاذ الجراحي: نفصل الويب فيو ونبقيه حياً في الذاكرة لتسريع الفتح القادم
         RoyalWebViewHost.detach();
-
         super.onDestroy();
     }
 }
