@@ -1,0 +1,26 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    
+    <!-- 👑 ثيم السبلاش (Android 12+) -->
+    <style name="Theme.App.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/splash_bg_color</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_round</item>
+        <item name="windowSplashScreenAnimationDuration">300</item>
+        <item name="postSplashScreenTheme">@style/Theme.MyTwasmart</item>
+    </style>
+
+    <!-- 👑 ثيم التطبيق الأساسي -->
+    <style name="Theme.MyTwasmart" parent="Theme.Material3.Light.NoActionBar">
+        <item name="android:statusBarColor">@color/status_bar_color</item>
+        <item name="android:navigationBarColor">@color/navigation_bar_color</item>
+        
+        <item name="android:windowActivityTransitions">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        
+        <!-- أيقونات البطارية داكنة لأن الخلفية بيضاء -->
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar" tools:targetApi="o_mr1">true</item>
+        
+        <item name="android:windowBackground">@color/splash_bg_color</item>
+    </style>
+</resources>
