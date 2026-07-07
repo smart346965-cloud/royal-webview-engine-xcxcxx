@@ -1,4 +1,4 @@
-Enterpackage com.store.app;
+package com.store.app;
 
 import android.app.Activity;
 import android.content.Context;
