@@ -1,7 +1,7 @@
-here<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 🌐 صلاحيات المحرك الصاروخي الأساسية -->
+    <!-- Core Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
@@ -17,7 +17,7 @@ here<?xml version="1.0" encoding="utf-8"?>
         android:hardwareAccelerated="true"
         android:theme="@style/AppTheme_NoSplash">
 
-        <!-- 🚀 واجهة المستخدم المستقلة (Native الصافي) -->
+        <!-- Native MainActivity -->
         <activity
             android:name=".MainActivity"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
@@ -34,7 +34,7 @@ here<?xml version="1.0" encoding="utf-8"?>
 
         </activity>
 
-        <!-- 📁 مزود الملفات (بقي كما هو لضمان عمل رفع الملفات والصور) -->
+        <!-- File Provider -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
