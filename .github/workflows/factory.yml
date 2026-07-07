@@ -27,9 +27,14 @@ jobs:
           echo "${{ secrets.KEYSTORE_FILE }}" | base64 --decode > release-key.jks || true
           
           # 2. التحقق من الملف: إذا كان حجمه صغيراً جداً أو تالفاً، نولد مفتاحاً جديداً فورياً (Automatic Fallback)
-          if [ $(stat -c%s "release-key.jks") -lt 100 ]; then
+          if [ ! -f "release-key.jks" ] || [ $(stat -c%s "release-key.jks") -lt 100 ]; then
             echo "⚠️ Keystone file corrupted or missing! Generating auto-key for build..."
+            
+            # 🔥 الحل هنا: نحذف الملف الفارغ أو المعطوب قبل توليد الجديد حتى لا تعترض أداة الجافا
+            rm -f release-key.jks 
+            
             keytool -genkeypair -v -keystore release-key.jks -storepass android -alias key0 -keypass android -keyalg RSA -keysize 2048 -validity 1000 -dname "CN=Royal, OU=Engine, O=Factory, L=City, S=State, C=US"
+            
             # تحديث المتغيرات لاستخدام مفتاحنا الجديد المولّد تلقائياً
             echo "KEYSTORE_PASSWORD=android" >> $GITHUB_ENV
             echo "KEY_ALIAS=key0" >> $GITHUB_ENV
