@@ -148,14 +148,24 @@ public class WebEngineManager {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request != null && request.isForMainFrame()) {
-                    view.loadUrl("file:///android_asset/public/offline.html");
+                    String failingUrl = request.getUrl().toString();
+                    
+                    // منع الدخول في حلقة مفرغة إذا فشل تحميل صفحة الأوفلاين نفسها لأي سبب
+                    if (!failingUrl.startsWith("file:///android_asset/")) {
+                        // تمرير الرابط الأصلي مشفراً لزر إعادة المحاولة داخل الـ HTML
+                        String offlineUrl = "file:///android_asset/public/offline.html?origin=" + android.net.Uri.encode(failingUrl);
+                        view.loadUrl(offlineUrl);
+                    }
                 }
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                view.loadUrl("file:///android_asset/public/offline.html");
+                if (failingUrl != null && !failingUrl.startsWith("file:///android_asset/")) {
+                    String offlineUrl = "file:///android_asset/public/offline.html?origin=" + android.net.Uri.encode(failingUrl);
+                    view.loadUrl(offlineUrl);
+                }
             }
 
             // 🌐 فلتر الشبكة الملكي (The Royal Interceptor)
@@ -277,4 +287,4 @@ public class WebEngineManager {
         }
         return true;
     }
-}
+        }
