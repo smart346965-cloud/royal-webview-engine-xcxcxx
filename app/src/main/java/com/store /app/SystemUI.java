@@ -22,7 +22,7 @@ public class SystemUI {
 
         Window window = activity.getWindow();
 
-        // Edge-to-Edge حقيقي
+        // Edge-to-Edge حقيقي (التمدد خلف الأشرطة)
         WindowCompat.setDecorFitsSystemWindows(window, false);
         window.setStatusBarColor(Color.TRANSPARENT);
         window.setNavigationBarColor(Color.TRANSPARENT);
@@ -34,22 +34,29 @@ public class SystemUI {
 
         View content = activity.findViewById(android.R.id.content);
 
+        // 🔥 التعديل الجراحي: تصفير الحواف لكي يحتل التطبيق 100% من الشاشة حرفياً
         ViewCompat.setOnApplyWindowInsetsListener(content, (view, insets) -> {
-
-            androidx.core.graphics.Insets systemBars =
-                    insets.getInsets(WindowInsetsCompat.Type.systemBars());
-
-            view.setPadding(
-                    0,
-                    systemBars.top,
-                    0,
-                    systemBars.bottom
-            );
-
+            view.setPadding(0, 0, 0, 0); 
             return WindowInsetsCompat.CONSUMED;
         });
 
-        ViewCompat.requestApplyInsets(content);
+        // تشغيل محرك الانغماس الذكي (الإخفاء التلقائي)
+        enableSmartImmersiveMode(window);
+    }
+
+    // 🔥 ميزة الانغماس المدروسة (Immersive Mode)
+    private static void enableSmartImmersiveMode(Window window) {
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
+        if (controller != null) {
+            // تحديد السلوك: تظهر الأشرطة بالسحب، وتكون فوق المحتوى (لا تزيحه)، ثم تختفي تلقائياً
+            controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+
+            // تأخير زمني مدروس بامتياز (3000 ملي ثانية = 3 ثوانٍ)
+            // تظل الأشرطة ظاهرة ليطمئن المستخدم، ثم تنزلق بهدوء للاختفاء
+            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                controller.hide(WindowInsetsCompat.Type.systemBars());
+            }, 3000);
+        }
     }
 
     // 2. المحرك الذكي للألوان العكسية - النسخة المطورة (Window-based)
@@ -73,4 +80,4 @@ public class SystemUI {
                 + 0.114 * Color.blue(color)) / 255;
         return darkness < 0.5;
     }
-}
+            }
