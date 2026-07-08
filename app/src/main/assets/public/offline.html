@@ -232,6 +232,15 @@
         };
     }
 
+    function retryConnection() {
+        // جلب الرابط الأصلي للمتجر من الـ URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const originUrl = urlParams.get('origin');
+        
+        // إذا وجد الرابط يعود إليه، وإلا يعود للجذر
+        window.location.href = originUrl ? decodeURIComponent(originUrl) : "/";
+    }
+
     // 👑 جلب لون المتجر من Boost (أو fallback)
     const savedColor = localStorage.getItem('royal_theme_color') || '#0f172a';
     const rgb = hexToRgb(savedColor);
@@ -274,9 +283,7 @@
 
         // 👑 تأخير بسيط جداً لإعطاء الإحساس السلس
         setTimeout(() => {
-            if (navigator.onLine) {
-                window.location.reload();
-            }
+            retryConnection();
         }, 50);
     }, { passive: true });
 
