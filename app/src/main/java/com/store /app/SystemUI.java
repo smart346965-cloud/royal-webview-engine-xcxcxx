@@ -55,7 +55,7 @@ public class SystemUI {
             // تظل الأشرطة ظاهرة ليطمئن المستخدم، ثم تنزلق بهدوء للاختفاء
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                 controller.hide(WindowInsetsCompat.Type.systemBars());
-            }, 3000);
+            }, 4500);
         }
     }
 
