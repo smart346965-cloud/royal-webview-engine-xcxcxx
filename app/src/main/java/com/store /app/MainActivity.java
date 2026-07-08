@@ -41,7 +41,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(activeWebView);
 
         // 3️⃣ توجيه المحرك للهدف (رابط تجريبي عالي الأداء)
-        String targetUrl = "https://smart346965-cloud.github.io"; 
+        String targetUrl = "https://row.gymshark.com/"; 
         if (activeWebView.getUrl() == null || !activeWebView.getUrl().startsWith("http")) {
             activeWebView.loadUrl(targetUrl);
         }
