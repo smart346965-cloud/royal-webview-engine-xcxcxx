@@ -225,6 +225,16 @@ public class WebEngineManager {
 
     private void syncStatusBarColor(WebView view) {
         if (activity == null || activity.isFinishing()) return; 
+
+        // 👑 قفل الحماية الملكي: إذا كنا في صفحة الأوفلاين المحلية، نفرض الألوان الشفافة والأيقونات الداكنة فوراً بدون تقييم مؤقت
+        String currentUrl = view.getUrl();
+        if (currentUrl != null && currentUrl.startsWith("file:///android_asset/")) {
+            activity.getWindow().setStatusBarColor(Color.TRANSPARENT);
+            activity.getWindow().setNavigationBarColor(Color.TRANSPARENT);
+            SystemUI.setDynamicIcons(activity.getWindow(), true); // true تعني أيقونات داكنة واضحة جداً فوق الخلفية البيضاء للأوفلاين
+            return;
+        }
+
         view.evaluateJavascript(
                 "(function(){return window.getComputedStyle(document.body).backgroundColor;})();",
                 value -> {
@@ -287,4 +297,4 @@ public class WebEngineManager {
         }
         return true;
     }
-        }
+                }
