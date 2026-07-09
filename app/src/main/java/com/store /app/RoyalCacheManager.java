@@ -578,4 +578,4 @@ public final class RoyalCacheManager {
 
         return meta;
     }
-                    }
+        }
