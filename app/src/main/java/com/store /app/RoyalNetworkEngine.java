@@ -19,35 +19,24 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * =========================================================
- * 🌐 ROYAL NETWORK ENGINE (V4 - The Warmup Assistant)
- * =========================================================
- * Architecture: Passive Observer, TCP/TLS Warmup, Zero I/O Blocking.
- * Philosophy: Open the road for Chromium, NEVER download for it.
- */
 public final class RoyalNetworkEngine {
 
     private static final String TAG = "RoyalNetworkEngine";
 
-    // 🛡️ نظام الميزانية الصارم (Budget Control)
-    private static final long PREFETCH_COOLDOWN_MS = 300L;
-    private static final int MAX_TRACKED_URLS = 60;
-    private static final int MAX_WARMED_HOSTS = 10;
+    private static final long PREFETCH_COOLDOWN_MS = 250L;
+    private static final int MAX_TRACKED_URLS = 80;
+    private static final int MAX_WARMED_HOSTS = 15;
 
-    // 🧠 ذاكرة الاستخبارات
     private static final Set<String> prefetchedUrls = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
     private static final Set<String> warmedHosts = Collections.newSetFromMap(new ConcurrentHashMap<String, Boolean>());
 
-    // ⚡ محرك خلفي خفيف جداً
+    // محرك خفيف منظم ومحمي لمنع التداخل أو استهلاك طاقة المعالج
     private static final ThreadPoolExecutor prefetchExecutor = new ThreadPoolExecutor(
-            1, 2, 30L, TimeUnit.SECONDS, new LinkedBlockingQueue<>()
+            1, 2, 20L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(50) // حد أقصى لطابور الانتظار لمنع تضخم الذاكرة
     );
 
-    // 🛡️ حارس المهام المتزامنة (Concurrent Task Limiter)
     private static final AtomicInteger activePrefetchTasks = new AtomicInteger(0);
 
-    // 🎯 صائد الأنماط (Pattern Hunter)
     private static final Pattern SEQUENCE_PATTERN = Pattern.compile("^(.*[_-])(\\d+)(\\.[a-zA-Z0-9]+.*)$");
     private static final Pattern PRODUCT_PATTERN = Pattern.compile(".*/(product|item|p|detail)/.*", Pattern.CASE_INSENSITIVE);
     private static final Pattern PAGE_PATTERN = Pattern.compile(".*(page=|/page/)(\\d+).*", Pattern.CASE_INSENSITIVE);
@@ -64,45 +53,41 @@ public final class RoyalNetworkEngine {
     private RoyalNetworkEngine() {}
 
     public static void install(Context context) {
-        // 🚫 منع تدمير الأجهزة الضعيفة
-        ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        isLowEndDevice = am.isLowRamDevice();
+        try {
+            ActivityManager am = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+            isLowEndDevice = am.isLowRamDevice();
+        } catch (Exception ignored) {}
 
-        // تهيئة مدير الكاش
         RoyalCacheManager.init(context);
-
-        Log.i(TAG, "🌐 Royal Network Advisor V4 Installed. (TCP Warmup Mode). LowEnd: " + isLowEndDevice);
+        Log.i(TAG, "🌐 Royal Network Advisor V5 Engine Active (Anti-Freeze Edition).");
     }
 
-    /**
-     * 👁️ المراقب السلبي (Passive Observer)
-     */
     public static WebResourceResponse interceptRequest(WebResourceRequest request) {
-        // استدعاء مدير الكاش أولاً
+        // خط الدفاع الأول والمستقر: الكاش المعزول
         WebResourceResponse cached = RoyalCacheManager.intercept(request);
         if (cached != null) return cached;
 
+        if (request == null || request.getUrl() == null) return null;
         String url = request.getUrl().toString();
 
-        if (!request.getMethod().equalsIgnoreCase("GET")) return null;
+        if (request.hasGesture()) {
+            notifyRenderIdle();
+        }
 
-        // 🔮 التنبؤ
+        if (!"GET".equalsIgnoreCase(request.getMethod())) return null;
+
+        // التحليلات التنبؤية المسبقة في خيوط منفصلة تماماً
         if (isLikelyCacheable(url) && isImageResource(url)) {
             analyzeAndPredict(url);
         }
 
         analyzePagePrediction(url);
 
-        return null; // Chromium هو الملك
+        return null; // سيادة المعالجة والتحميل تظل للكروميوم بأمان
     }
-
-    // ==========================================
-    // 🧠 الأنظمة الداخلية (Predictive Logic)
-    // ==========================================
 
     private static void analyzeAndPredict(String currentUrl) {
         Matcher matcher = SEQUENCE_PATTERN.matcher(currentUrl);
-
         if (matcher.matches()) {
             String prefix = matcher.group(1);
             String numberStr = matcher.group(2);
@@ -146,13 +131,39 @@ public final class RoyalNetworkEngine {
                 u.endsWith(".webp") || u.endsWith(".avif") || u.contains("cdn") || u.contains("img");
     }
 
-    /**
-     * 🚀 التحمية المسبقة للشبكة (Network Warmup)
-     */
+    private static boolean isSafeToWarmup(String url) {
+
+        String u = url.toLowerCase();
+
+        // الطلبات غير المناسبة للتنبؤ
+        if (u.contains("/api/")) return false;
+        if (u.contains("graphql")) return false;
+        if (u.contains("/ajax")) return false;
+        if (u.contains("admin")) return false;
+
+        // صفحات الحساب والجلسة
+        if (u.contains("/account")) return false;
+        if (u.contains("/my-account")) return false;
+        if (u.contains("/profile")) return false;
+        if (u.contains("/login")) return false;
+        if (u.contains("/logout")) return false;
+        if (u.contains("/register")) return false;
+        if (u.contains("/signin")) return false;
+
+        // عربة التسوق والدفع
+        if (u.contains("/cart")) return false;
+        if (u.contains("/checkout")) return false;
+        if (u.contains("/payment")) return false;
+        if (u.contains("/paypal")) return false;
+        if (u.contains("/stripe")) return false;
+
+        return true;
+    }
+
     private static void scheduleWarmup(String urlString, boolean isHighPriority) {
         if (!allowPrefetch || renderBusy || isLowEndDevice) return;
+        if (!isSafeToWarmup(urlString)) return;
 
-        // 👑 لا نتوقع إلا إذا كان السكرول سريعاً نسبياً
         boolean isFastScroll = scrollVelocity > 5;
         long deltaTime = System.currentTimeMillis() - lastScrollTime;
         boolean isFling = deltaTime < 50;
@@ -164,59 +175,84 @@ public final class RoyalNetworkEngine {
 
         if (prefetchedUrls.contains(urlString)) return;
 
-        // تقليل حجم الذاكرة لمنع Flush Storm
         if (prefetchedUrls.size() > MAX_TRACKED_URLS) {
-            prefetchedUrls.clear();
-        }
 
-        // حارس المهام: لا نسمح بأكثر من مهمتين في نفس الوقت
-        if (activePrefetchTasks.get() >= 2) return;
+            java.util.Iterator<String> it = prefetchedUrls.iterator();
+
+            int remove = MAX_TRACKED_URLS / 4;
+
+            while (it.hasNext() && remove-- > 0) {
+                it.next();
+                it.remove();
+            }
+        }
 
         prefetchedUrls.add(urlString);
         lastPrefetchTime = now;
 
         warmupHost(urlString);
 
-        prefetchExecutor.execute(() -> {
-            activePrefetchTasks.incrementAndGet();
-
-            // تحسين الأولوية للمهام العالية الأهمية
-            if (isHighPriority) {
-                android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_FOREGROUND);
-            }
-
-            try {
-                URL url = new URL(urlString);
-
-                // طلب GET مع الكاش للتخزين الفعلي في Cache حق Chromium
-                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
-                connection.setRequestMethod("GET");
-                connection.setUseCaches(true);
-                connection.setRequestProperty("Cache-Control", "max-age=60");
-                connection.setRequestProperty("Connection", "keep-alive");
-                connection.setConnectTimeout(1500);
-                connection.setReadTimeout(1500);
-
-                // إكمال Handshake مع السيرفر
-                int code = connection.getResponseCode();
-
-                if (code == HttpURLConnection.HTTP_OK) {
-
-                    RoyalCacheManager.store(
-                            urlString,
-                            new BufferedInputStream(connection.getInputStream()),
-                            connection.getHeaderFields()
-                    );
-
+        try {
+            prefetchExecutor.execute(() -> {
+                activePrefetchTasks.incrementAndGet();
+                if (isHighPriority) {
+                    android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_FOREGROUND);
                 }
 
-                connection.disconnect();
+                HttpURLConnection connection = null;
+                try {
+                    URL url = new URL(urlString);
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setUseCaches(true);
+                    connection.setInstanceFollowRedirects(true);
 
-            } catch (Exception ignored) {
-            } finally {
-                activePrefetchTasks.decrementAndGet();
-            }
-        });
+                    connection.setRequestProperty(
+                            "Accept-Encoding",
+                            "gzip, deflate, br"
+                    );
+
+                    connection.setRequestProperty(
+                            "Accept",
+                            "*/*"
+                    );
+
+                    connection.setRequestProperty("Cache-Control", "max-age=60");
+                    connection.setRequestProperty("Connection", "keep-alive");
+                    connection.setConnectTimeout(1200);
+                    connection.setReadTimeout(1200);
+
+                    int code = connection.getResponseCode();
+                    if (code >= 200 && code < 300) {
+                        String cacheControl = connection.getHeaderField("Cache-Control");
+
+                        if (cacheControl != null) {
+
+                            String cc = cacheControl.toLowerCase();
+
+                            if (cc.contains("no-store")
+                                    || cc.contains("private")
+                                    || cc.contains("no-cache")) {
+
+                                return;
+                            }
+                        }
+
+                        RoyalCacheManager.store(
+                                urlString,
+                                new BufferedInputStream(connection.getInputStream()),
+                                connection.getHeaderFields()
+                        );
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    if (connection != null) {
+                        try { connection.disconnect(); } catch (Exception ignored) {}
+                    }
+                    activePrefetchTasks.decrementAndGet();
+                }
+            });
+        } catch (Exception ignored) {} // حماية الطابور الممتلئ من التسبب بـ Crash
     }
 
     public static void notifyRenderStart() { renderBusy = true; }
@@ -236,9 +272,6 @@ public final class RoyalNetworkEngine {
         lastScrollTime = now;
     }
 
-    /**
-     * 🚀 دالة التحمية المباشرة (تُستدعى من الجافاسكريبت)
-     */
     public static void warmupLink(String urlString) {
         scheduleWarmup(urlString, true);
     }
@@ -248,18 +281,24 @@ public final class RoyalNetworkEngine {
             String host = new URL(url).getHost();
             if (warmedHosts.contains(host)) return;
 
-            // حماية الـ DNS من التضخم
             if (warmedHosts.size() > MAX_WARMED_HOSTS) {
-                warmedHosts.clear();
+
+                java.util.Iterator<String> it = warmedHosts.iterator();
+
+                int remove = MAX_WARMED_HOSTS / 3;
+
+                while (it.hasNext() && remove-- > 0) {
+                    it.next();
+                    it.remove();
+                }
             }
             warmedHosts.add(host);
 
             prefetchExecutor.execute(() -> {
                 try {
-                    // تسخين الـ DNS بصمت
-                    String ignoredIp = java.net.InetAddress.getByName(host).getHostAddress();
+                    java.net.InetAddress.getAllByName(host);
                 } catch (Exception ignored) {}
             });
         } catch (Exception ignored) {}
     }
-}
+    }
