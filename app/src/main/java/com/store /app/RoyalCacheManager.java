@@ -19,6 +19,7 @@ public final class RoyalCacheManager {
         long expiry;
         String etag;
         String lastModified;
+        long created;
     }
 
     private static final String TAG = "RoyalCacheManager";
@@ -112,9 +113,25 @@ public final class RoyalCacheManager {
                 return null;
             }
 
+            if (meta.etag == null && meta.lastModified == null) {
+
+                if (System.currentTimeMillis() > meta.expiry) {
+
+                    file.delete();
+                    metaFile(key).delete();
+
+                    return null;
+                }
+
+            }
+
             // 🔥 احترام expiry من السيرفر
             if (System.currentTimeMillis() > meta.expiry) {
-                return null; // نخلي الشبكة تتحمل
+
+                file.delete();
+                metaFile(key).delete();
+
+                return null;
             }
 
             try {
@@ -192,7 +209,7 @@ public final class RoyalCacheManager {
             if (!writingNow.add(key)) return;
 
             try {
-                CacheMeta meta = parseHeaders(headers);
+                CacheMeta meta = parseHeaders(url, headers);
                 if (meta == null) return;
 
                 File file = new File(cacheDir, key);
@@ -287,11 +304,46 @@ public final class RoyalCacheManager {
 
         String clean = url.split("\\?")[0].toLowerCase();
 
-        if (clean.contains("/api/") || clean.contains("graphql")) return false;
-        if (clean.endsWith(".html") || clean.endsWith(".php")) return false;
+        // APIs
+        if (clean.contains("/api/")) return false;
+        if (clean.contains("graphql")) return false;
+        if (clean.contains("/wp-json/")) return false;
+        if (clean.contains("/rest/")) return false;
+
+        // Authentication
+        if (clean.contains("login")) return false;
+        if (clean.contains("logout")) return false;
+        if (clean.contains("signin")) return false;
+        if (clean.contains("signup")) return false;
+        if (clean.contains("register")) return false;
+        if (clean.contains("auth")) return false;
+        if (clean.contains("oauth")) return false;
+
+        // User Data
+        if (clean.contains("/account")) return false;
+        if (clean.contains("/profile")) return false;
+        if (clean.contains("/user")) return false;
+        if (clean.contains("/customer")) return false;
+        if (clean.contains("/dashboard")) return false;
+
+        // Commerce
+        if (clean.contains("/cart")) return false;
+        if (clean.contains("/checkout")) return false;
+        if (clean.contains("/payment")) return false;
+        if (clean.contains("/order")) return false;
+        if (clean.contains("/invoice")) return false;
+
+        // HTML
+        if (clean.endsWith(".html")) return false;
+        if (clean.endsWith(".php")) return false;
+        if (clean.endsWith(".jsp")) return false;
+        if (clean.endsWith(".asp")) return false;
+        if (clean.endsWith(".aspx")) return false;
 
         for (String e : EXT) {
-            if (clean.endsWith(e)) return true;
+            if (clean.endsWith(e)) {
+                return true;
+            }
         }
 
         return false;
@@ -299,14 +351,42 @@ public final class RoyalCacheManager {
 
     private static long resolveTTL(String url) {
 
-        String u = url.toLowerCase();
+        String u = url.toLowerCase(Locale.US);
 
-        if (u.contains(".js") || u.contains(".css")) return 6 * 60 * 60 * 1000; // 6 ساعات
+        if (u.endsWith(".js"))
+            return 6L * 60 * 60 * 1000;
 
-        if (u.contains(".png") || u.contains(".jpg") || u.contains(".webp") || u.contains(".avif"))
-            return 3 * 24 * 60 * 60 * 1000; // 3 أيام
+        if (u.endsWith(".css"))
+            return 6L * 60 * 60 * 1000;
 
-        return 24 * 60 * 60 * 1000; // يوم واحد
+        if (u.endsWith(".woff"))
+            return 30L * 24 * 60 * 60 * 1000;
+
+        if (u.endsWith(".woff2"))
+            return 30L * 24 * 60 * 60 * 1000;
+
+        if (u.endsWith(".ttf"))
+            return 30L * 24 * 60 * 60 * 1000;
+
+        if (u.endsWith(".otf"))
+            return 30L * 24 * 60 * 60 * 1000;
+
+        if (u.endsWith(".png"))
+            return 7L * 24 * 60 * 60 * 1000;
+
+        if (u.endsWith(".jpg"))
+            return 7L * 24 * 60 * 60 * 1000;
+
+        if (u.endsWith(".jpeg"))
+            return 7L * 24 * 60 * 60 * 1000;
+
+        if (u.endsWith(".webp"))
+            return 7L * 24 * 60 * 60 * 1000;
+
+        if (u.endsWith(".avif"))
+            return 7L * 24 * 60 * 60 * 1000;
+
+        return 60L * 60 * 1000;
     }
 
     // ==========================================
@@ -334,7 +414,14 @@ public final class RoyalCacheManager {
             if (files == null) return;
 
             long total = 0;
-            for (File f : files) total += f.length();
+            for (File f : files) {
+
+                if (f.getName().endsWith(".meta"))
+                    continue;
+
+                total += f.length();
+
+            }
 
             if (total < MAX_DISK_CACHE) return;
 
@@ -347,6 +434,10 @@ public final class RoyalCacheManager {
             });
 
             for (File f : files) {
+
+                if (f.getName().endsWith(".meta"))
+                    continue;
+
                 total -= f.length();
 
                 File meta = new File(f.getAbsolutePath() + ".meta");
@@ -416,6 +507,7 @@ public final class RoyalCacheManager {
             p.put("expiry", String.valueOf(meta.expiry));
             if (meta.etag != null) p.put("etag", meta.etag);
             if (meta.lastModified != null) p.put("lm", meta.lastModified);
+            p.put("created", String.valueOf(System.currentTimeMillis()));
             p.store(fos, null);
         } catch (Exception ignored) {}
     }
@@ -432,6 +524,7 @@ public final class RoyalCacheManager {
             m.expiry = Long.parseLong(p.getProperty("expiry", "0"));
             m.etag = p.getProperty("etag");
             m.lastModified = p.getProperty("lm");
+            m.created = Long.parseLong(p.getProperty("created", "0"));
             return m;
 
         } catch (Exception e) {
@@ -439,7 +532,9 @@ public final class RoyalCacheManager {
         }
     }
 
-    private static CacheMeta parseHeaders(Map<String, List<String>> headers) {
+    private static CacheMeta parseHeaders(
+            String url,
+            Map<String, List<String>> headers) {
 
         CacheMeta meta = new CacheMeta();
 
@@ -449,12 +544,19 @@ public final class RoyalCacheManager {
         List<String> cc = headers.get("Cache-Control");
         if (cc != null) {
             String val = cc.get(0);
+            String lower = val.toLowerCase(Locale.US);
 
-            if (val.contains("no-store")) return null;
+            if (lower.contains("no-store")) return null;
 
-            if (val.contains("max-age")) {
+            if (lower.contains("no-cache")) return null;
+
+            if (lower.contains("private")) return null;
+
+            if (lower.contains("must-revalidate")) return null;
+
+            if (lower.contains("max-age")) {
                 try {
-                    String s = val.split("max-age=")[1].split(",")[0];
+                    String s = lower.split("max-age=")[1].split(",")[0];
                     long seconds = Long.parseLong(s);
                     meta.expiry = now + (seconds * 1000);
                 } catch (Exception ignored) {}
@@ -463,7 +565,7 @@ public final class RoyalCacheManager {
 
         // fallback
         if (meta.expiry == 0) {
-            meta.expiry = now + resolveTTL("fallback");
+            meta.expiry = now + resolveTTL(url);
         }
 
         // 🔥 ETag
@@ -476,4 +578,4 @@ public final class RoyalCacheManager {
 
         return meta;
     }
-}
+                    }
