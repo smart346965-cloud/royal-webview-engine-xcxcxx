@@ -145,27 +145,34 @@ public class WebEngineManager {
                 return true;
             }
 
+            // 🛡️ درع الحماية الملكي: يمنع ديناصور كروم نهائياً ويحترم الكاش
+            private void triggerOfflineProtection(WebView view, String failingUrl) {
+                if (failingUrl != null && !failingUrl.startsWith("file:///android_asset/")) {
+                    
+                    // 1. الإيقاف القسري: نوقف محرك كروم فوراً في مساره لمنعه من رسم صفحة الخطأ
+                    view.stopLoading();
+                    
+                    // 2. التنظيف العميق (Flush): نحقن صفحة فارغة شفافة لقتل أي ومضة بصرية لرسائل كروم
+                    view.loadDataWithBaseURL(null, "<html><body style='background-color:transparent;'></body></html>", "text/html", "UTF-8", null);
+                    
+                    // 3. التوجيه السلس: نضع أمر التحميل في طابور الـ UI لضمان تنظيف الشاشة أولاً ثم عرض الأوفلاين
+                    String offlineUrl = "file:///android_asset/public/offline.html?origin=" + android.net.Uri.encode(failingUrl);
+                    view.post(() -> view.loadUrl(offlineUrl));
+                }
+            }
+
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                // التأكد من أن الفشل في الصفحة الرئيسية (وليس في صورة أو ملف فرعي)
                 if (request != null && request.isForMainFrame()) {
-                    String failingUrl = request.getUrl().toString();
-                    
-                    // منع الدخول في حلقة مفرغة إذا فشل تحميل صفحة الأوفلاين نفسها لأي سبب
-                    if (!failingUrl.startsWith("file:///android_asset/")) {
-                        // تمرير الرابط الأصلي مشفراً لزر إعادة المحاولة داخل الـ HTML
-                        String offlineUrl = "file:///android_asset/public/offline.html?origin=" + android.net.Uri.encode(failingUrl);
-                        view.loadUrl(offlineUrl);
-                    }
+                    triggerOfflineProtection(view, request.getUrl().toString());
                 }
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                if (failingUrl != null && !failingUrl.startsWith("file:///android_asset/")) {
-                    String offlineUrl = "file:///android_asset/public/offline.html?origin=" + android.net.Uri.encode(failingUrl);
-                    view.loadUrl(offlineUrl);
-                }
+                triggerOfflineProtection(view, failingUrl);
             }
 
             // 🌐 فلتر الشبكة الملكي (The Royal Interceptor)
@@ -297,4 +304,4 @@ public class WebEngineManager {
         }
         return true;
     }
-                }
+        }
