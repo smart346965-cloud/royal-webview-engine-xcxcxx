@@ -116,6 +116,10 @@ public class WebEngineManager {
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
+                if (!NetworkMonitor.isInternetAvailable(context)) {
+                    return;
+                }
+
                 if (view.getAlpha() == 0f) {
                     view.animate().alpha(1f).setDuration(180).start();
                 }
@@ -152,12 +156,19 @@ public class WebEngineManager {
                     // 1. الإيقاف القسري: نوقف محرك كروم فوراً في مساره لمنعه من رسم صفحة الخطأ
                     view.stopLoading();
                     
-                    // 2. التنظيف العميق (Flush): نحقن صفحة فارغة شفافة لقتل أي ومضة بصرية لرسائل كروم
-                    view.loadDataWithBaseURL(null, "<html><body style='background-color:transparent;'></body></html>", "text/html", "UTF-8", null);
+                    // 2. التنظيف العميق (Flush): نقوم بمسح التاريخ
+                    view.clearHistory();
                     
                     // 3. التوجيه السلس: نضع أمر التحميل في طابور الـ UI لضمان تنظيف الشاشة أولاً ثم عرض الأوفلاين
-                    String offlineUrl = "file:///android_asset/public/offline.html?origin=" + android.net.Uri.encode(failingUrl);
-                    view.post(() -> view.loadUrl(offlineUrl));
+                    view.post(() -> {
+
+                        String offline =
+                                "file:///android_asset/public/offline.html?origin="
+                                + Uri.encode(failingUrl);
+
+                        view.loadUrl(offline);
+
+                    });
                 }
             }
 
@@ -178,6 +189,16 @@ public class WebEngineManager {
             // 🌐 فلتر الشبكة الملكي (The Royal Interceptor)
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                if (!NetworkMonitor.isInternetAvailable(context)
+                        && request.isForMainFrame()) {
+
+                    return new WebResourceResponse(
+                            "text/html",
+                            "UTF-8",
+                            null
+                    );
+                }
+
                 WebResourceResponse royalResponse = RoyalNetworkEngine.interceptRequest(request);
                 if (royalResponse != null) {
                     return royalResponse;
@@ -198,9 +219,23 @@ public class WebEngineManager {
                     }
 
                     if (scheme.equals("http") || scheme.equals("https")) {
+
+                        if (!NetworkMonitor.isInternetAvailable(context)) {
+
+                            String offline =
+                                    "file:///android_asset/public/offline.html?origin="
+                                    + Uri.encode(uri.toString());
+
+                            view.stopLoading();
+                            view.loadUrl(offline);
+
+                            return true;
+                        }
+
                         if (!isSameOrigin(uri)) {
                             return handleUriLogic(uri, request.isForMainFrame());
                         }
+
                         return false; 
                     }
                 }
@@ -232,6 +267,9 @@ public class WebEngineManager {
 
     private void syncStatusBarColor(WebView view) {
         if (activity == null || activity.isFinishing()) return; 
+
+        if (!NetworkMonitor.isInternetAvailable(context))
+            return;
 
         // 👑 قفل الحماية الملكي: إذا كنا في صفحة الأوفلاين المحلية، نفرض الألوان الشفافة والأيقونات الداكنة فوراً بدون تقييم مؤقت
         String currentUrl = view.getUrl();
