@@ -11,6 +11,9 @@ public class RoyalApplication extends Application {
         
         Log.i("RoyalEngine", "🚀 Royal Application Ignite! Pre-warming WebView...");
         
+        // 🌐 تشغيل رادار مراقبة الشبكة فوراً لخدمة الـ WebEngineManager والكاش
+        NetworkMonitor.init(this);
+        
         // هنا تكمن الخدعة الصاروخية: 
         // نقوم بتسخين وخلق محركك (RoyalWebViewHost) في الذاكرة في الجزء من الثانية 
         // الذي يلمس فيه المستخدم أيقونة التطبيق، قبل حتى أن تظهر شاشة السبلاش!
