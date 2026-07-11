@@ -10,8 +10,9 @@
 (function () {
     'use strict';
 
+    // 🛡️ حماية من التكرار
     if (document.getElementById('royal-native-illusion-shield')) return;
-    console.log("🎭 ROYAL ENGINE: Native Illusion Shield Deployed.");
+    // console.log("🎭 ROYAL ENGINE: Native Illusion Shield Deployed.");
 
     // =========================================================
     // 🛡️ 1. THE VIEWPORT LOCK (إبادة الزوم بالإصبعين من الجذور)
@@ -20,7 +21,7 @@
     function lockViewport() {
         let viewport = document.querySelector('meta[name="viewport"]');
         const lockContent = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-        
+       
         if (viewport) {
             viewport.content = lockContent;
         } else {
@@ -81,14 +82,14 @@
             -webkit-touch-callout: none !important;
         }
 
-        /* 
+        /*
          * 10. إبادة سحب الصور (Image Dragging)
          */
         img {
             -webkit-user-drag: none !important;
         }
 
-        /* 
+        /*
          * 🛑 11. إبادة شريط ترجمة جوجل بصرياً (Zero CPU Cost)
          * نخفي أي عنصر يحاول جوجل حقنه، ونمنعه من إزاحة الـ body للأسفل
          */
@@ -101,7 +102,7 @@
             visibility: hidden !important;
         }
         body {
-            top: 0 !important; 
+            top: 0 !important;
         }
     `;
 
