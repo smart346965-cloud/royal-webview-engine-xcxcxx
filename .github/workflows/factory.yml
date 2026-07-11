@@ -1,9 +1,11 @@
 name: Royal Cloud Factory 👑
 
 on:
-  workflow_dispatch: # 👑 لتفعيل زر البناء اليدوي (Run workflow) داخل جيت هاب
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
   repository_dispatch:
-    types: [build_app] # 🚀 يظل مفتوحاً للـ Worker لإطلاق المصنع سحابياً عند طلب العميل
+    types: [build_app] # فتح ممر آمن للـ Worker لإطلاق المصنع فوراً
 
 jobs:
   build:
