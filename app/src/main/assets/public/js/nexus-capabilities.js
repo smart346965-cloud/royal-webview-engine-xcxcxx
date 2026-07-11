@@ -1,4 +1,4 @@
-here/**
+/**
  * =========================================================
  * ⚙️ NEXUS CAPABILITIES ENGINE (V1.0 - The Hardware Bridge)
  * File: nexus-capabilities.js
@@ -78,6 +78,37 @@ here/**
         .nx-camera-container.active {
             transform: translate3d(0, 0, 0);
         }
+
+        /* زر التصوير الاحترافي */
+        .nx-capture-btn {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 72px;
+            height: 72px;
+            background: #fff;
+            border-radius: 50%;
+            border: 4px solid rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            z-index: 11;
+        }
+        .nx-capture-btn::after {
+            content: '';
+            width: 54px;
+            height: 54px;
+            background: transparent;
+            border: 2px solid #000;
+            border-radius: 50%;
+        }
+        .nx-capture-btn:active {
+            transform: translateX(-50%) scale(0.9);
+            background: #eee;
+        }
     `;
     document.head.appendChild(uiStyles);
 
@@ -154,7 +185,7 @@ here/**
                 overlay.style.backdropFilter = 'blur(0px)';
                 box.style.transform = 'translate3d(0, 30px, 0) scale(0.95)';
                 box.style.filter = 'blur(10px)';
-                
+               
                 setTimeout(() => {
                     overlay.remove();
                     if (callback) callback();
@@ -181,7 +212,7 @@ here/**
     // 🛡️ 3. PERMISSION & EXECUTOR (المنفذ الآمن)
     // =========================================================
     const Executor = {
-        
+       
         cameraStream: null,
         audioStream: null,
 
@@ -195,16 +226,10 @@ here/**
                 return false;
             }
 
-            const state = await Permissions.query("camera");
-
-            if (state === "denied") {
-                Memory.setDenied("camera");
-                UX.showPermissionHelp("الكاميرا");
-                return false;
-            }
-
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } });
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: { ideal: "environment" } } 
+                });
                 this.cameraStream = stream;
 
                 const container = document.createElement('div');
@@ -217,13 +242,45 @@ here/**
                 video.srcObject = stream;
                 Object.assign(video.style, { width: "100%", height: "100%", objectFit: "cover" });
 
+                // زر الإغلاق
                 const closeBtn = document.createElement('button');
                 closeBtn.innerHTML = "✕";
                 Object.assign(closeBtn.style, {
                     position: "absolute", top: "20px", right: "20px", width: "42px", height: "42px",
                     borderRadius: "50%", background: "rgba(255,255,255,0.2)", backdropFilter: "blur(10px)",
-                    color: "#fff", border: "none", fontSize: "18px", zIndex: "10"
+                    color: "#fff", border: "none", fontSize: "18px", zIndex: "12"
                 });
+
+                // 📸 زر التصوير الدائري
+                const captureBtn = document.createElement('div');
+                captureBtn.className = 'nx-capture-btn';
+
+                // وظيفة التقاط الصورة
+                const takePhoto = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0);
+
+                    canvas.toBlob((blob) => {
+                        const file = new File([blob], `nexus-photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+                        
+                        // 🚀 إرسال الحدث للمتجر
+                        window.dispatchEvent(new CustomEvent('nexus:photo-captured', {
+                            detail: { 
+                                blob: blob, 
+                                file: file,
+                                base64: canvas.toDataURL('image/jpeg')
+                            }
+                        }));
+                        
+                        // تأثير بصري عند التصوير (Flash)
+                        container.style.background = '#fff';
+                        setTimeout(() => { container.style.background = '#000'; }, 50);
+                        closeCamera();
+                    }, 'image/jpeg', 0.9);
+                };
 
                 const closeCamera = () => {
                     container.classList.remove('active');
@@ -234,15 +291,15 @@ here/**
                     }, 600);
                 };
 
-                closeBtn.ontouchstart = (e) => { e.preventDefault(); closeCamera(); };
                 closeBtn.onclick = closeCamera;
+                captureBtn.onclick = takePhoto;
 
                 container.appendChild(closeBtn);
                 container.appendChild(video);
+                container.appendChild(captureBtn);
                 document.body.appendChild(container);
 
                 requestAnimationFrame(() => container.classList.add('active'));
-
                 return true;
 
             } catch (err) {
@@ -410,7 +467,7 @@ here/**
                 if (e.type === 'touchstart') e.preventDefault();
 
                 const action = target.getAttribute('data-nexus-action');
-                
+               
                 if (action === 'camera') {
                     UX.showPrePermission({
                         title: "📷 تفعيل الكاميرا",
@@ -419,7 +476,7 @@ here/**
                     });
                     return;
                 }
-                
+               
                 if (action === 'microphone') {
                     UX.showPrePermission({
                         title: "🎤 تفعيل الميكروفون",
@@ -428,7 +485,7 @@ here/**
                     });
                     return;
                 }
-                
+               
                 if (action === 'biometric') {
                     UX.showPrePermission({
                         title: "🔐 تفعيل البصمة",
@@ -437,14 +494,14 @@ here/**
                     });
                     return;
                 }
-                
+               
                 if (action === 'share') {
                     const urlToShare = target.getAttribute('data-url') || window.location.href;
                     const titleToShare = target.getAttribute('data-title') || document.title;
                     Executor.shareContent(titleToShare, "", urlToShare);
                     return;
                 }
-                
+               
                 if (action === 'location') {
                     UX.showPrePermission({
                         title: "📍 تحديد الموقع",
@@ -453,7 +510,7 @@ here/**
                             const originalText = target.innerText;
                             target.disabled = true;
                             target.innerText = "جاري...";
-                            
+                           
                             Executor.requestLocation(
                                 (coords) => {
                                     target.innerText = "تم التحديد ✓";
@@ -480,7 +537,7 @@ here/**
     // =========================================================
     function bootCapabilities() {
         const requestIdle = window.requestIdleCallback || function (cb) { setTimeout(cb, 500); };
-        
+       
         requestIdle(() => {
             try {
                 ContextBinder.init();
@@ -490,12 +547,7 @@ here/**
         });
     }
 
-    // الكشف للمايسترو (index.js)
-    window.NexusCapabilities = {
-        init: bootCapabilities,
-        hardware: Hardware,
-        permissions: Permissions,
-        ux: UX
-    };
+    // 🔗 كشف العضلة للمايسترو (index.js)
+    window.NexusCapabilities = { init: bootCapabilities };
 
 })();
