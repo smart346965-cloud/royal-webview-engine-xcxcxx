@@ -76,12 +76,15 @@ public final class RoyalNetworkEngine {
 
         if (!"GET".equalsIgnoreCase(request.getMethod())) return null;
 
-        // التحليلات التنبؤية المسبقة في خيوط منفصلة تماماً
-        if (isLikelyCacheable(url) && isImageResource(url)) {
+        // 🛡️ التعديل الجراحي (حارس البوابة): 
+        // لن نقوم بتشغيل الـ Regex (التحليلات التنبؤية) على كل صورة صغيرة أو ملف CSS!
+        // سنشغلها فقط على مسارات الصفحات الرئيسية (Main Frame)
+        if (request.isForMainFrame()) {
+            analyzePagePrediction(url);
+        } else if (!isLowEndDevice && isLikelyCacheable(url) && isImageResource(url)) {
+            // تخفيف الحمل: لا نتوقع تسلسل الصور إلا إذا كان الجهاز قوياً
             analyzeAndPredict(url);
         }
-
-        analyzePagePrediction(url);
 
         return null; // سيادة المعالجة والتحميل تظل للكروميوم بأمان
     }
@@ -301,4 +304,4 @@ public final class RoyalNetworkEngine {
             });
         } catch (Exception ignored) {}
     }
-    }
+                }
