@@ -193,44 +193,54 @@
 
 <!-- الجافاسكريبت المحدث والاحترافي -->
 <script>
-    // 👑 تحويل RGB إلى HSL (تحكم احترافي بالألوان)
-    function rgbToHsl(r, g, b) {
-        r /= 255; g /= 255; b /= 255;
-
-        const max = Math.max(r, g, b), min = Math.min(r, g, b);
-        let h, s, l = (max + min) / 2;
-
-        if (max === min) {
-            h = s = 0;
-        } else {
-            const d = max - min;
-            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-
-            switch(max) {
-                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-                case g: h = (b - r) / d + 2; break;
-                case b: h = (r - g) / d + 4; break;
-            }
-
-            h /= 6;
+    // 👑 1. جلب الهوية المزدوجة للمتجر
+    let primaryRgb = 'rgb(15, 23, 42)';
+    let secondaryRgb = 'rgb(248, 250, 252)';
+    
+    try {
+        const savedIdentity = JSON.parse(localStorage.getItem('royal_brand_identity'));
+        if (savedIdentity) {
+            primaryRgb = savedIdentity.primary;
+            secondaryRgb = savedIdentity.secondary;
         }
+    } catch (e) {}
 
-        return {
-            h: Math.round(h * 360),
-            s: Math.round(s * 100),
-            l: Math.round(l * 100)
-        };
+    // 👑 2. دالة استخراج الأرقام من صيغة rgb(r, g, b)
+    function extractRgbValues(rgbString) {
+        const match = rgbString.match(/\d+/g);
+        return match ? { r: match[0], g: match[1], b: match[2] } : { r: 15, g: 23, b: 42 };
     }
 
-    function hexToRgb(hex) {
-        let c = hex.replace('#', '');
-        if (c.length === 3) c = c[0]+c[0]+c[1]+c[1]+c[2]+c[2];
-        return {
-            r: parseInt(c.substring(0, 2), 16),
-            g: parseInt(c.substring(2, 4), 16),
-            b: parseInt(c.substring(4, 6), 16)
-        };
-    }
+    const pColor = extractRgbValues(primaryRgb);
+    const sColor = extractRgbValues(secondaryRgb);
+
+    // 👑 3. الهندسة اللونية (كما طلبت تماماً)
+    
+    // - اللون الأساسي الصريح (للأزرار)
+    const purePrimary = `rgb(${pColor.r}, ${pColor.g}, ${pColor.b})`;
+    
+    // - علامة التعجب: غامقة أو بارزة بنسبة 65% (عبر الشفافية لدمج فخم مع الخلفية)
+    const exclamationColor = `rgba(${pColor.r}, ${pColor.g}, ${pColor.b}, 0.65)`;
+    
+    // - علامة الواي فاي: خفيفة جداً بنسبة 10%
+    const wifiWavesColor = `rgba(${pColor.r}, ${pColor.g}, ${pColor.b}, 0.10)`;
+    
+    // - الخلفية: نأخذ اللون الثانوي للمتجر ونجعله فاتحاً وخفيفاً جداً (2% إلى 4% شفافية فقط)
+    const bgGradientStart = `rgba(${sColor.r}, ${sColor.g}, ${sColor.b}, 0.04)`;
+    const bgGradientEnd   = `rgba(${sColor.r}, ${sColor.g}, ${sColor.b}, 0.01)`;
+
+    // 👑 4. حقن الألوان في متغيرات الـ CSS
+    document.documentElement.style.setProperty('--royal-primary', purePrimary);
+    document.documentElement.style.setProperty('--royal-faded', wifiWavesColor);
+    document.documentElement.style.setProperty('--royal-bg-start', bgGradientStart);
+    document.documentElement.style.setProperty('--royal-bg-end', bgGradientEnd);
+    
+    // 👑 5. تلوين علامة التعجب بـ CSS مخصص فوراً
+    const exclamationLines = document.querySelectorAll('line[stroke="var(--royal-primary)"], circle[fill="var(--royal-primary)"]');
+    exclamationLines.forEach(el => {
+        if (el.tagName === 'line') el.setAttribute('stroke', exclamationColor);
+        if (el.tagName === 'circle') el.setAttribute('fill', exclamationColor);
+    });
 
     function retryConnection() {
         // جلب الرابط الأصلي للمتجر من الـ URL
@@ -239,32 +249,6 @@
         
         // إذا وجد الرابط يعود إليه، وإلا يعود للجذر
         window.location.href = originUrl ? decodeURIComponent(originUrl) : "/";
-    }
-
-    // 👑 جلب لون المتجر من Boost (أو fallback)
-    const savedColor = localStorage.getItem('royal_theme_color') || '#0f172a';
-    const rgb = hexToRgb(savedColor);
-    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
-
-    // 👑 اللون الأساسي (نظيف)
-    const primaryColor = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
-
-    // 👑 لون الواي فاي (تشبع أقل + إضاءة أعلى)
-    const fadedColor = `hsl(${hsl.h}, ${Math.max(5, hsl.s * 0.2)}%, 85%)`;
-
-    // 👑 الخلفية (هادئة جداً)
-    const bgGradientStart = `hsl(${hsl.h}, ${Math.max(5, hsl.s * 0.15)}%, 96%)`;
-    const bgGradientEnd   = `hsl(${hsl.h}, ${Math.max(5, hsl.s * 0.2)}%, 92%)`;
-
-    // حقن الألوان كـ CSS Variables
-    document.documentElement.style.setProperty('--royal-primary', primaryColor);
-    document.documentElement.style.setProperty('--royal-faded', fadedColor);
-    document.documentElement.style.setProperty('--royal-bg-start', bgGradientStart);
-    document.documentElement.style.setProperty('--royal-bg-end', bgGradientEnd);
-    
-    // 👑 ضبط لون النص حسب الإضاءة
-    if (hsl.l > 70) {
-        document.documentElement.setAttribute('data-theme', 'light');
     }
 
     // التحديث التلقائي إذا عاد الإنترنت من تلقاء نفسه
@@ -306,4 +290,4 @@
     }, false);
 </script>
 </body>
-</html>
+                    </html>
