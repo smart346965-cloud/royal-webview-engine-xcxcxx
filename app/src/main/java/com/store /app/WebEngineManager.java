@@ -59,6 +59,13 @@ public class WebEngineManager {
 
         configureSettings();
         attachClients();
+
+        // 👑 إرسال سرعة السكرول لمحرك الشبكة حتى تصبح قرارات الـ Prefetch أكثر ذكاءً
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) ->
+                    RoyalNetworkEngine.notifyScroll(scrollY)
+            );
+        }
     }
 
     private void removeSplashInstantly() {
@@ -80,7 +87,7 @@ public class WebEngineManager {
             if (splashOverlay != null) {
                 splashOverlay.animate()
                         .alpha(0f)
-                        .setDuration(300) 
+                        .setDuration(300)
                         .withEndAction(this::removeSplashInstantly)
                         .start();
             }
@@ -111,6 +118,10 @@ public class WebEngineManager {
 
             @Override
             public void onPageFinished(WebView view, String url) {
+
+                // 👑 انتهى الرندر بالكامل
+                RoyalNetworkEngine.notifyRenderIdle();
+
                 WebEnhancer.apply(view, context);
             }
 
@@ -141,6 +152,9 @@ public class WebEngineManager {
             @Override
             public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
                 android.util.Log.e("RoyalEngine", "☠️ FATAL: Chromium Renderer crashed! Auto-Recovery...");
+
+                RoyalNetworkEngine.notifyRenderIdle();
+
                 RoyalWebViewHost.destroy();
                 if (activity != null) {
                     RoyalWebViewHost.create(activity.getApplicationContext());
@@ -152,19 +166,19 @@ public class WebEngineManager {
             // 🛡️ درع الحماية الملكي: يمنع ديناصور كروم نهائياً ويحترم الكاش
             private void triggerOfflineProtection(WebView view, String failingUrl) {
                 if (failingUrl != null && !failingUrl.startsWith("file:///android_asset/")) {
-                    
+
                     // 1. الإيقاف القسري: نوقف محرك كروم فوراً في مساره لمنعه من رسم صفحة الخطأ
                     view.stopLoading();
-                    
+
                     // 2. التنظيف العميق (Flush): نقوم بمسح التاريخ
                     view.clearHistory();
-                    
+
                     // 3. التوجيه السلس: نضع أمر التحميل في طابور الـ UI لضمان تنظيف الشاشة أولاً ثم عرض الأوفلاين
                     view.post(() -> {
 
                         String offline =
                                 "file:///android_asset/public/offline.html?origin="
-                                + Uri.encode(failingUrl);
+                                        + Uri.encode(failingUrl);
 
                         view.loadUrl(offline);
 
@@ -176,6 +190,9 @@ public class WebEngineManager {
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 // التأكد من أن الفشل في الصفحة الرئيسية (وليس في صورة أو ملف فرعي)
                 if (request != null && request.isForMainFrame()) {
+
+                    RoyalNetworkEngine.notifyRenderIdle();
+
                     triggerOfflineProtection(view, request.getUrl().toString());
                 }
             }
@@ -183,15 +200,24 @@ public class WebEngineManager {
             @SuppressWarnings("deprecation")
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+                RoyalNetworkEngine.notifyRenderIdle();
+
                 triggerOfflineProtection(view, failingUrl);
             }
 
             // 🌐 فلتر الشبكة الملكي (The Royal Interceptor)
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                // 🚨 جراحة الخبير: تم إزالة فحص NetworkMonitor من هنا تماماً!
-                // لا نوقف محرك كروم عن طلب الصور والملفات. إذا انقطع النت، onReceivedError سيتدخل.
-                
+                if (!NetworkMonitor.isInternetAvailable(context)
+                        && request.isForMainFrame()) {
+
+                    return new WebResourceResponse(
+                            "text/html",
+                            "UTF-8",
+                            null
+                    );
+                }
+
                 WebResourceResponse royalResponse = RoyalNetworkEngine.interceptRequest(request);
                 if (royalResponse != null) {
                     return royalResponse;
@@ -201,52 +227,38 @@ public class WebEngineManager {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                // ⏱️ نظام القياس (Telemetry): لمعرفة زمن معالجة النقرة
-                long startTime = System.nanoTime(); 
+                if (request != null && request.getUrl() != null) {
+                    Uri uri = request.getUrl();
+                    String scheme = uri.getScheme();
 
-                if (request == null || request.getUrl() == null) return false;
-                Uri uri = request.getUrl();
-                String scheme = uri.getScheme();
-                if (scheme == null) return false;
+                    if (scheme == null) return false;
 
-                boolean isMainFrame = request.isForMainFrame();
-
-                // 1. مسار الإطارات الفرعية (IFrames) -> عبور فوري
-                if (!isMainFrame) return false;
-
-                // 2. 🚀 المسار السريع جداً (VIP Fast-Path) للروابط الداخلية
-                if (scheme.equals("http") || scheme.equals("https")) {
-                    // 🛡️ صمام الأمان: إذا كان هذا أول تشغيل (trustedHost غير معروف بعد)
-                    // نقوم بتسجيل هذا الرابط كـ "النطاق الأم" فوراً قبل أي شيء آخر!
-                    if (trustedHost == null) {
-                        setTrustedOrigin(uri.toString());
+                    if (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("whatsapp") || scheme.equals("intent")) {
+                        return handleUriLogic(uri, request.isForMainFrame());
                     }
 
-                    // الآن نفحص: هل هو نفس النطاق الموثوق؟ إذا نعم، ابقَ داخل التطبيق!
-                    if (isSameOrigin(uri)) {
-                        logPerformance("Internal Click", startTime);
-                        return false; // العودة بـ false تعني: "أيها الـ WebView، افتح الرابط بداخلك ولا تخرج"
+                    if (scheme.equals("http") || scheme.equals("https")) {
+
+                        if (!NetworkMonitor.isInternetAvailable(context)) {
+
+                            String offline =
+                                    "file:///android_asset/public/offline.html?origin="
+                                            + Uri.encode(uri.toString());
+
+                            view.stopLoading();
+                            view.loadUrl(offline);
+
+                            return true;
+                        }
+
+                        if (!isSameOrigin(uri)) {
+                            return handleUriLogic(uri, request.isForMainFrame());
+                        }
+
+                        return false;
                     }
                 }
-
-                // 3. الروابط الخارجية وتطبيقات النظام (واتساب، اتصال، الخ)
-                if (!scheme.equals("http") && !scheme.equals("https")) {
-                    boolean result = handleUriLogic(uri, true);
-                    logPerformance("External App", startTime);
-                    return result;
-                }
-
-                // 4. الانتقال لمتصفح خارجي (روابط خارج الدومين)
-                // هنا فقط نفحص الإنترنت لأننا سنغادر التطبيق
-                if (!NetworkMonitor.isInternetAvailable(context)) {
-                    triggerOfflineProtection(view, uri.toString());
-                    logPerformance("Offline Block", startTime);
-                    return true;
-                }
-
-                boolean result = handleUriLogic(uri, true);
-                logPerformance("External Web", startTime);
-                return result;
+                return false;
             }
 
             @SuppressWarnings("deprecation")
@@ -256,12 +268,6 @@ public class WebEngineManager {
                     return handleUriLogic(Uri.parse(url), true);
                 }
                 return false;
-            }
-
-            // ⏱️ دالة مساعدة لطباعة القياس الزمني في الـ Logcat
-            private void logPerformance(String action, long startTimeNanos) {
-                long durationMs = (System.nanoTime() - startTimeNanos) / 1000000;
-                android.util.Log.d("RoyalEngine_Perf", "⚡ Navigation [" + action + "] took: " + durationMs + " ms");
             }
         });
 
@@ -279,7 +285,7 @@ public class WebEngineManager {
     }
 
     private void syncStatusBarColor(WebView view) {
-        if (activity == null || activity.isFinishing()) return; 
+        if (activity == null || activity.isFinishing()) return;
 
         if (!NetworkMonitor.isInternetAvailable(context))
             return;
@@ -355,4 +361,4 @@ public class WebEngineManager {
         }
         return true;
     }
-            }
+                                 }
