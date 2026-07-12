@@ -215,11 +215,17 @@ public class WebEngineManager {
                 if (!isMainFrame) return false;
 
                 // 2. 🚀 المسار السريع جداً (VIP Fast-Path) للروابط الداخلية
-                // لا نفحص إنترنت ولا شيء، نعيد false فوراً ليعمل BFCache و Speculation بأقصى سرعة
                 if (scheme.equals("http") || scheme.equals("https")) {
+                    // 🛡️ صمام الأمان: إذا كان هذا أول تشغيل (trustedHost غير معروف بعد)
+                    // نقوم بتسجيل هذا الرابط كـ "النطاق الأم" فوراً قبل أي شيء آخر!
+                    if (trustedHost == null) {
+                        setTrustedOrigin(uri.toString());
+                    }
+
+                    // الآن نفحص: هل هو نفس النطاق الموثوق؟ إذا نعم، ابقَ داخل التطبيق!
                     if (isSameOrigin(uri)) {
                         logPerformance("Internal Click", startTime);
-                        return false; 
+                        return false; // العودة بـ false تعني: "أيها الـ WebView، افتح الرابط بداخلك ولا تخرج"
                     }
                 }
 
