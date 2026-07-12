@@ -2,12 +2,16 @@ package com.store.app;
 
 import android.content.Context;
 import android.content.Intent;
-importandroid.graphics.Color;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.*;
+
+import androidx.webkit.WebSettingsCompat;
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
 
 public class WebEngineManager {
 
@@ -107,10 +111,29 @@ public class WebEngineManager {
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
+
+        if (WebViewFeature.isFeatureSupported(
+                WebViewFeature.ALGORITHMIC_DARKENING)) {
+
+            WebSettingsCompat.setAlgorithmicDarkeningAllowed(
+                    settings,
+                    true
+            );
+        }
+
         settings.setAllowFileAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSupportMultipleWindows(false);
         settings.setSupportZoom(false);
+
+        if (WebViewFeature.isFeatureSupported(
+                WebViewFeature.SUPPRESS_ERROR_PAGE)) {
+
+            WebSettingsCompat.setWillSuppressErrorPage(
+                    settings,
+                    true
+            );
+        }
     }
 
     private void attachClients() {
@@ -124,6 +147,23 @@ public class WebEngineManager {
                 RoyalNetworkEngine.notifyRenderIdle();
 
                 WebEnhancer.apply(view, context);
+
+                if (WebViewFeature.isFeatureSupported(
+                        WebViewFeature.VISUAL_STATE_CALLBACK)) {
+
+                    WebViewCompat.postVisualStateCallback(
+                            view,
+                            System.currentTimeMillis(),
+                            new WebViewCompat.VisualStateCallback() {
+
+                                @Override
+                                public void onComplete(long requestId) {
+
+                                    RoyalNetworkEngine.notifyRenderIdle();
+
+                                }
+                            });
+                }
             }
 
             @Override
@@ -286,7 +326,12 @@ public class WebEngineManager {
             public void onProgressChanged(WebView view, int newProgress) {
                 progressBar.setProgress(newProgress);
                 if (newProgress == 100) {
-                    progressBar.animate().alpha(0f).setDuration(200).start();
+                    progressBar.animate()
+                            .alpha(0f)
+                            .setDuration(150)
+                            .withEndAction(() ->
+                                    progressBar.setVisibility(View.GONE))
+                            .start();
                 } else {
                     progressBar.setAlpha(1f);
                 }
@@ -306,6 +351,10 @@ public class WebEngineManager {
             activity.getWindow().setStatusBarColor(Color.TRANSPARENT);
             activity.getWindow().setNavigationBarColor(Color.TRANSPARENT);
             SystemUI.setDynamicIcons(activity.getWindow(), true); // true تعني أيقونات داكنة واضحة جداً فوق الخلفية البيضاء للأوفلاين
+            return;
+        }
+
+        if (!view.isAttachedToWindow()) {
             return;
         }
 
