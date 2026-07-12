@@ -20,18 +20,36 @@ public class NetworkMonitor {
         if (cm != null) {
             // فحص الحالة المبدئية
             android.net.NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-            isConnected.set(activeNetwork != null && activeNetwork.isConnectedOrConnecting());
+            boolean connected = activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+
+            isConnected.set(connected);
+
+            RoyalNetworkEngine.setNetworkPrefetchAllowed(connected);
 
             // مراقبة التغيرات اللحظية بدون استهلاك بطارية
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 cm.registerDefaultNetworkCallback(new ConnectivityManager.NetworkCallback() {
                     @Override
                     public void onAvailable(Network network) {
-                        isConnected.set(true);
+
+                        NetworkCapabilities caps =
+                                cm.getNetworkCapabilities(network);
+
+                        boolean ok =
+                                caps != null
+                                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                                && caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED);
+
+                        isConnected.set(ok);
+
+                        RoyalNetworkEngine.setNetworkPrefetchAllowed(ok);
                     }
                     @Override
                     public void onLost(Network network) {
+
                         isConnected.set(false);
+
+                        RoyalNetworkEngine.setNetworkPrefetchAllowed(false);
                     }
                 });
             }
