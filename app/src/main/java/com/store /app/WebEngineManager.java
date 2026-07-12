@@ -2,7 +2,7 @@ package com.store.app;
 
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Color;
+importandroid.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.view.View;
@@ -78,6 +78,7 @@ public class WebEngineManager {
                 progressBar.setVisibility(View.GONE);
             }
             markSplashRemoved.run();
+            RoyalNetworkEngine.notifyRenderIdle();
         });
     }
 
@@ -127,6 +128,9 @@ public class WebEngineManager {
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
+
+                RoyalNetworkEngine.notifyRenderStart();
+
                 if (!NetworkMonitor.isInternetAvailable(context)) {
                     return;
                 }
@@ -143,9 +147,13 @@ public class WebEngineManager {
                 syncStatusBarColor(view);
 
                 view.postDelayed(() -> {
+
                     if (!splashChecker.isRemoved()) {
                         removeSplashSmoothly();
                     }
+
+                    RoyalNetworkEngine.notifyRenderIdle();
+
                 }, 2500);
             }
 
@@ -166,6 +174,8 @@ public class WebEngineManager {
             // 🛡️ درع الحماية الملكي: يمنع ديناصور كروم نهائياً ويحترم الكاش
             private void triggerOfflineProtection(WebView view, String failingUrl) {
                 if (failingUrl != null && !failingUrl.startsWith("file:///android_asset/")) {
+
+                    RoyalNetworkEngine.notifyRenderIdle();
 
                     // 1. الإيقاف القسري: نوقف محرك كروم فوراً في مساره لمنعه من رسم صفحة الخطأ
                     view.stopLoading();
@@ -361,4 +371,4 @@ public class WebEngineManager {
         }
         return true;
     }
-                                 }
+                    }
