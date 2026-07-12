@@ -15,7 +15,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -34,8 +33,6 @@ public final class RoyalNetworkEngine {
     private static final ThreadPoolExecutor prefetchExecutor = new ThreadPoolExecutor(
             1, 2, 20L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(50) // حد أقصى لطابور الانتظار لمنع تضخم الذاكرة
     );
-
-    private static final AtomicInteger activePrefetchTasks = new AtomicInteger(0);
 
     private static final Pattern SEQUENCE_PATTERN = Pattern.compile("^(.*[_-])(\\d+)(\\.[a-zA-Z0-9]+.*)$");
     private static final Pattern PRODUCT_PATTERN = Pattern.compile(".*/(product|item|p|detail)/.*", Pattern.CASE_INSENSITIVE);
@@ -197,7 +194,6 @@ public final class RoyalNetworkEngine {
 
         try {
             prefetchExecutor.execute(() -> {
-                activePrefetchTasks.incrementAndGet();
                 if (isHighPriority) {
                     android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_FOREGROUND);
                 }
@@ -252,7 +248,6 @@ public final class RoyalNetworkEngine {
                     if (connection != null) {
                         try { connection.disconnect(); } catch (Exception ignored) {}
                     }
-                    activePrefetchTasks.decrementAndGet();
                 }
             });
         } catch (Exception ignored) {} // حماية الطابور الممتلئ من التسبب بـ Crash
@@ -304,4 +299,4 @@ public final class RoyalNetworkEngine {
             });
         } catch (Exception ignored) {}
     }
-                }
+        }
