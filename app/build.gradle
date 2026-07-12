@@ -6,6 +6,11 @@ android {
     namespace 'com.store.app'
     compileSdk 34 // المعيار الحديث للأداء
 
+    // 👇 أضف هذا البلوك هنا لتفعيل BuildConfig
+    buildFeatures {
+        buildConfig true
+    }
+
     defaultConfig {
         applicationId "com.store.app"
         minSdk 24 // متوافق تماماً مع محرك Royal Engine
@@ -34,6 +39,9 @@ dependencies {
     implementation libs.material
     implementation libs.activity
     implementation libs.constraintlayout
+    
+    // 👇 أضف هذا السطر لمكتبة WebKit المتقدمة الخاصة بمحركك
+    implementation libs.androidx.webkit
     
     // 🎨 مكتبة الـ Splash Screen الرسمية (لتنعيم الدخول في أندرويد 12+)
     implementation libs.androidx.core.splashscreen
