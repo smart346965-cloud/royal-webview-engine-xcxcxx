@@ -125,15 +125,6 @@ public class WebEngineManager {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSupportMultipleWindows(false);
         settings.setSupportZoom(false);
-
-        if (WebViewFeature.isFeatureSupported(
-                WebViewFeature.SUPPRESS_ERROR_PAGE)) {
-
-            WebSettingsCompat.setWillSuppressErrorPage(
-                    settings,
-                    true
-            );
-        }
     }
 
     private void attachClients() {
@@ -420,4 +411,4 @@ public class WebEngineManager {
         }
         return true;
     }
-                    }
+                        }
