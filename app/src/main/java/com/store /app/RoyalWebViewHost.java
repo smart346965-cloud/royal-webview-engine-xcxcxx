@@ -2,7 +2,7 @@ package com.store.app;
 
 import android.app.Activity;
 import android.content.Context;
-import android.content.MutableContextWrapper;
+importandroid.content.MutableContextWrapper;
 import android.os.Build;
 import android.os.Looper;
 import android.util.Log;
@@ -12,6 +12,11 @@ import android.view.ViewParent;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
+import androidx.webkit.WebViewRenderProcess;
+import androidx.webkit.WebViewRenderProcessClient;
 
 import java.io.InputStream;
 
@@ -69,17 +74,41 @@ public final class RoyalWebViewHost {
             webViewInstance = new WebView(contextWrapper);
             isInitialized = true;
 
+            if (!BuildConfig.DEBUG) {
+                WebView.setWebContentsDebuggingEnabled(false);
+            }
+
             // 🛡️ التحسين 2: تفعيل Hardware Acceleration للرسوميات
             webViewInstance.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
             // تطبيق الإعدادات الاحترافية
             RoyalHybridEngine.prime(webViewInstance, applicationContext);
 
+            if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_VIEW_RENDERER_CLIENT_BASIC_USAGE)) {
+
+                WebViewCompat.setWebViewRenderProcessClient(
+                        webViewInstance,
+                        Runnable::run,
+                        new WebViewRenderProcessClient() {
+
+                            @Override
+                            public void onRenderProcessResponsive(
+                                    WebView view,
+                                    WebViewRenderProcess renderer) {
+                            }
+
+                            @Override
+                            public void onRenderProcessUnresponsive(
+                                    WebView view,
+                                    WebViewRenderProcess renderer) {
+
+                                RoyalNetworkEngine.notifyRenderStart();
+                            }
+                        });
+            }
+
             // 🌐 تثبيت محرك الشبكة الملكي
             RoyalNetworkEngine.install(applicationContext);
-
-            // 🛡️ طبقة 2: Renderer Crash Recovery (مراقبة انهيار محرك كروم)
-            setupRendererRecovery(applicationContext);
 
             // 🌉 حقن الجسر الملكي (Bridge) لربط الجافاسكريبت بمحرك الشبكة
             // نمرر webViewInstance للجسر لكي يتمكن من التحدث مع المتصفح لاحقاً
@@ -191,23 +220,6 @@ public final class RoyalWebViewHost {
         }
     }
 
-    /**
-     * 🚑 Renderer Crash Recovery (الإنعاش عند السكتة القلبية للمحرك)
-     */
-    private static void setupRendererRecovery(Context context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            webViewInstance.setWebViewClient(new WebViewClient() {
-                @Override
-                public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-                    Log.e(TAG, "☠️ Renderer crashed (OOM or GPU error). Rebuilding WebView silently.");
-                    destroy();
-                    create(context);
-                    return true; // النظام لن ينهار، لقد تعاملنا مع الكارثة!
-                }
-            });
-        }
-    }
-
     private static void safeRemoveFromParent() {
         if (webViewInstance != null) {
             ViewParent parent = webViewInstance.getParent();
@@ -245,4 +257,4 @@ public final class RoyalWebViewHost {
             Log.e(TAG, "❌ Telescope injection failed", e);
         }
     }
-}
+        }
