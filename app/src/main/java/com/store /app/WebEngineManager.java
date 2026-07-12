@@ -189,16 +189,9 @@ public class WebEngineManager {
             // 🌐 فلتر الشبكة الملكي (The Royal Interceptor)
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                if (!NetworkMonitor.isInternetAvailable(context)
-                        && request.isForMainFrame()) {
-
-                    return new WebResourceResponse(
-                            "text/html",
-                            "UTF-8",
-                            null
-                    );
-                }
-
+                // 🚨 جراحة الخبير: تم إزالة فحص NetworkMonitor من هنا تماماً!
+                // لا نوقف محرك كروم عن طلب الصور والملفات. إذا انقطع النت، onReceivedError سيتدخل.
+                
                 WebResourceResponse royalResponse = RoyalNetworkEngine.interceptRequest(request);
                 if (royalResponse != null) {
                     return royalResponse;
@@ -208,38 +201,46 @@ public class WebEngineManager {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                if (request != null && request.getUrl() != null) {
-                    Uri uri = request.getUrl();
-                    String scheme = uri.getScheme();
+                // ⏱️ نظام القياس (Telemetry): لمعرفة زمن معالجة النقرة
+                long startTime = System.nanoTime(); 
 
-                    if (scheme == null) return false;
+                if (request == null || request.getUrl() == null) return false;
+                Uri uri = request.getUrl();
+                String scheme = uri.getScheme();
+                if (scheme == null) return false;
 
-                    if (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("whatsapp") || scheme.equals("intent")) {
-                        return handleUriLogic(uri, request.isForMainFrame());
-                    }
+                boolean isMainFrame = request.isForMainFrame();
 
-                    if (scheme.equals("http") || scheme.equals("https")) {
+                // 1. مسار الإطارات الفرعية (IFrames) -> عبور فوري
+                if (!isMainFrame) return false;
 
-                        if (!NetworkMonitor.isInternetAvailable(context)) {
-
-                            String offline =
-                                    "file:///android_asset/public/offline.html?origin="
-                                    + Uri.encode(uri.toString());
-
-                            view.stopLoading();
-                            view.loadUrl(offline);
-
-                            return true;
-                        }
-
-                        if (!isSameOrigin(uri)) {
-                            return handleUriLogic(uri, request.isForMainFrame());
-                        }
-
+                // 2. 🚀 المسار السريع جداً (VIP Fast-Path) للروابط الداخلية
+                // لا نفحص إنترنت ولا شيء، نعيد false فوراً ليعمل BFCache و Speculation بأقصى سرعة
+                if (scheme.equals("http") || scheme.equals("https")) {
+                    if (isSameOrigin(uri)) {
+                        logPerformance("Internal Click", startTime);
                         return false; 
                     }
                 }
-                return false;
+
+                // 3. الروابط الخارجية وتطبيقات النظام (واتساب، اتصال، الخ)
+                if (!scheme.equals("http") && !scheme.equals("https")) {
+                    boolean result = handleUriLogic(uri, true);
+                    logPerformance("External App", startTime);
+                    return result;
+                }
+
+                // 4. الانتقال لمتصفح خارجي (روابط خارج الدومين)
+                // هنا فقط نفحص الإنترنت لأننا سنغادر التطبيق
+                if (!NetworkMonitor.isInternetAvailable(context)) {
+                    triggerOfflineProtection(view, uri.toString());
+                    logPerformance("Offline Block", startTime);
+                    return true;
+                }
+
+                boolean result = handleUriLogic(uri, true);
+                logPerformance("External Web", startTime);
+                return result;
             }
 
             @SuppressWarnings("deprecation")
@@ -249,6 +250,12 @@ public class WebEngineManager {
                     return handleUriLogic(Uri.parse(url), true);
                 }
                 return false;
+            }
+
+            // ⏱️ دالة مساعدة لطباعة القياس الزمني في الـ Logcat
+            private void logPerformance(String action, long startTimeNanos) {
+                long durationMs = (System.nanoTime() - startTimeNanos) / 1000000;
+                android.util.Log.d("RoyalEngine_Perf", "⚡ Navigation [" + action + "] took: " + durationMs + " ms");
             }
         });
 
@@ -342,4 +349,4 @@ public class WebEngineManager {
         }
         return true;
     }
-        }
+            }
