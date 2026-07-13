@@ -28,6 +28,9 @@ public class WebEngineManager {
     private String trustedHost = null;
     private int trustedPort = -1;
 
+    private final Runnable scrollFinishedRunnable =
+            RoyalNetworkEngine::notifyScrollFinished;
+
     public interface SplashStateChecker {
         boolean isRemoved();
     }
@@ -66,9 +69,16 @@ public class WebEngineManager {
 
         // 👑 إرسال سرعة السكرول لمحرك الشبكة حتى تصبح قرارات الـ Prefetch أكثر ذكاءً
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) ->
-                    RoyalNetworkEngine.notifyScroll(scrollY)
-            );
+            webView.setOnScrollChangeListener(
+                    (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+
+                        RoyalNetworkEngine.notifyScroll(scrollY);
+
+                        v.removeCallbacks(scrollFinishedRunnable);
+
+                        v.postDelayed(scrollFinishedRunnable, 90);
+
+                    });
         }
     }
 
@@ -185,7 +195,7 @@ public class WebEngineManager {
 
                     RoyalNetworkEngine.notifyRenderIdle();
 
-                }, 2500);
+                }, 150);
             }
 
             @Override
@@ -411,4 +421,4 @@ public class WebEngineManager {
         }
         return true;
     }
-                        }
+        }
