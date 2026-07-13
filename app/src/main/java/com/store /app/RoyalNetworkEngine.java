@@ -46,6 +46,7 @@ public final class RoyalNetworkEngine {
     private static int lastScrollY = 0;
     private static long lastScrollTime = 0;
     private static int scrollVelocity = 0;
+    private static volatile boolean scrolling = false;
 
     private RoyalNetworkEngine() {}
 
@@ -161,6 +162,10 @@ public final class RoyalNetworkEngine {
     }
 
     private static void scheduleWarmup(String urlString, boolean isHighPriority) {
+        if (scrolling) {
+            return;
+        }
+
         if (!allowPrefetch || renderBusy || isLowEndDevice) return;
         if (!isSafeToWarmup(urlString)) return;
 
@@ -258,7 +263,11 @@ public final class RoyalNetworkEngine {
     public static void setNetworkPrefetchAllowed(boolean allowed) { allowPrefetch = allowed; }
 
     public static void notifyScroll(int scrollY) {
+
         long now = System.currentTimeMillis();
+
+        scrolling = true;
+
         int deltaY = scrollY - lastScrollY;
         long deltaTime = now - lastScrollTime;
 
@@ -268,6 +277,10 @@ public final class RoyalNetworkEngine {
 
         lastScrollY = scrollY;
         lastScrollTime = now;
+    }
+
+    public static void notifyScrollFinished() {
+        scrolling = false;
     }
 
     public static void warmupLink(String urlString) {
@@ -299,4 +312,4 @@ public final class RoyalNetworkEngine {
             });
         } catch (Exception ignored) {}
     }
-        }
+    }
