@@ -23,6 +23,7 @@ public final class WebEnhancer {
 
     // 👑 كاش الذاكرة العشوائية: يمنع قراءة الملفات من القرص أكثر من مرة واحدة
     private static volatile String cachedPayload = null;
+    private static volatile boolean preloaded = false;
 
     /**
      * 🔑 Entry point
@@ -30,21 +31,43 @@ public final class WebEnhancer {
     public static synchronized void apply(WebView webView, Context context) {
         if (webView == null || context == null) return;
 
-        // ⚡ السرعة القصوى: إذا كانت الأكواد مقروءة مسبقاً، احقنها فوراً (0ms I/O)
-        if (cachedPayload != null) {
-            webView.evaluateJavascript(cachedPayload, null);
+        preload(context);
+
+        webView.evaluateJavascript(cachedPayload, null);
+        Log.i(TAG, "✅ Royal Engine injected & cached in RAM successfully");
+    }
+
+    /**
+     * 🔥 Preload JS Engine into RAM
+     */
+    public static synchronized void preload(Context context) {
+
+        if (preloaded || context == null)
             return;
-        }
 
         final String[] scripts = {
-                // 🎭 1. الدرع البصري (يجب أن يكون الأول دائماً لإبادة الوميض والزوم فوراً)
+
                 "public/js/royal-native-illusion.js",
 
-                // 👑 2. المايسترو (يُحقن أخيراً لإدارة المعالج والتنقل)
                 "public/js/index.js"
+
         };
 
-        injectBatch(webView, context, scripts);
+        StringBuilder payload = new StringBuilder(65536);
+
+        payload.append("(function(){\ntry{\n");
+
+        for (String path : scripts) {
+            appendScript(payload, context, path);
+        }
+
+        payload.append("\n}catch(e){console.error(e);}\n})();");
+
+        cachedPayload = payload.toString();
+
+        preloaded = true;
+
+        Log.i(TAG, "🔥 JS Engine Preloaded Into RAM");
     }
 
     /**
@@ -94,4 +117,4 @@ public final class WebEnhancer {
     }
 
     private WebEnhancer() {}
-            }
+    }
