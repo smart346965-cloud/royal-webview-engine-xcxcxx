@@ -47,12 +47,11 @@ public final class WebEnhancer {
         if (preloaded || context == null)
             return;
 
+        // 👑 التعديل هنا: إضافة sw-register.js للمصفوفة
         final String[] scripts = {
-
                 "public/js/royal-native-illusion.js",
-
+                "public/js/sw-register.js", // 👈 تم الحقن هنا باحترافية
                 "public/js/index.js"
-
         };
 
         StringBuilder payload = new StringBuilder(65536);
@@ -119,4 +118,4 @@ public final class WebEnhancer {
     }
 
     private WebEnhancer() {}
-            }
+                }
