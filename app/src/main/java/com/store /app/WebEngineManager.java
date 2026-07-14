@@ -122,6 +122,17 @@ public class WebEngineManager {
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
 
+        // 👑 فتح قواعد البيانات التخزينية العميقة (ضروري للـ Service Worker والـ IndexedDB)
+        settings.setDatabaseEnabled(true);
+        
+        // 👑 السماح بالوصول للملفات لتتمكن نواة كروم من كتابة الـ Bytecode محلياً
+        settings.setAllowFileAccess(true);
+        settings.setAllowContentAccess(true);
+        
+        // 👑 السماح للموارد المحلية بالاتصال ببعضها (مهم جداً لتخطي قيود الـ CORS داخل الكاش)
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
+
         if (WebViewFeature.isFeatureSupported(
                 WebViewFeature.ALGORITHMIC_DARKENING)) {
 
@@ -421,4 +432,4 @@ public class WebEngineManager {
         }
         return true;
     }
-        }
+                        }
