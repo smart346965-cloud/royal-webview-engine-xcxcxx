@@ -46,6 +46,9 @@ public final class RoyalWebViewHost {
     private static long lastRestartTime = 0;
     private static final long MAX_UPTIME = 3 * 60 * 60 * 1000L; // 3 ساعات
 
+    // 🌉 مسار الوصول المباشر للجسر الملكي
+    private static RoyalJsBridge jsBridgeInstance;
+
     private RoyalWebViewHost() {}
 
     /**
@@ -110,9 +113,9 @@ public final class RoyalWebViewHost {
             // 🌐 تثبيت محرك الشبكة الملكي
             RoyalNetworkEngine.install(applicationContext);
 
-            // 🌉 حقن الجسر الملكي (Bridge) لربط الجافاسكريبت بمحرك الشبكة
-            // نمرر webViewInstance للجسر لكي يتمكن من التحدث مع المتصفح لاحقاً
-            webViewInstance.addJavascriptInterface(new RoyalJsBridge(webViewInstance), "RoyalJsBridge");
+            // 🌉 حقن الجسر الملكي وحفظ النسخة لربطها بالواجهة لاحقاً
+            jsBridgeInstance = new RoyalJsBridge(webViewInstance);
+            webViewInstance.addJavascriptInterface(jsBridgeInstance, "RoyalJsBridge");
 
             // 🔥 التحسين 3: تسخين محرك V8 مباشرة بدلاً من about:blank
             webViewInstance.evaluateJavascript("(function(){return 'warm';})()", null);
@@ -234,4 +237,9 @@ public final class RoyalWebViewHost {
         Log.i(TAG, "Detaches   : " + detachCount);
         Log.i(TAG, "====================================");
     }
-            }
+
+    // 👑 دالة جلب الجسر البرمجي لربطه بالواجهة
+    public static RoyalJsBridge getBridge() {
+        return jsBridgeInstance;
+    }
+                }
