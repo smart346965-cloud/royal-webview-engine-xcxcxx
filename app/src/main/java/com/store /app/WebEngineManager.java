@@ -271,12 +271,34 @@ public class WebEngineManager {
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 if (request == null || request.getUrl() == null) return null;
 
+                String url = request.getUrl().toString();
+
+                // 👑 الوكيل المحلي (Local Proxy): تقديم Service Worker من داخل الهاتف بسرعة 0ms
+                // هذا الإجراء موثوق وقياسي 100% ويستخدم نفس الـ API الرسمي من جوجل
+                if (url.endsWith("/nexus-service-worker.js")) {
+                    try {
+                        java.io.InputStream swStream = context.getAssets().open("public/js/nexus-service-worker.js");
+                        
+                        // تمرير هيدرز أمنية صارمة لإخبار المتصفح أن هذا ملف شرعي
+                        java.util.Map<String, String> headers = new java.util.HashMap<>();
+                        headers.put("Content-Type", "application/javascript");
+                        headers.put("Service-Worker-Allowed", "/");
+                        headers.put("Cache-Control", "no-cache"); 
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            return new WebResourceResponse("application/javascript", "UTF-8", 200, "OK", headers, swStream);
+                        } else {
+                            return new WebResourceResponse("application/javascript", "UTF-8", swStream);
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.e("RoyalEngine", "Failed to serve local Service Worker", e);
+                    }
+                }
+
                 // 1. حماية وضع الأوفلاين السريع
                 if (!NetworkMonitor.isInternetAvailable(context) && request.isForMainFrame()) {
                     return new WebResourceResponse("text/html", "UTF-8", null);
                 }
-
-                String url = request.getUrl().toString();
 
                 // 2. 👑 حيلة رفع الأولوية للتمرير الفوري للموارد الحساسة (HTML / JS / CSS)
                 boolean isCoreResource = request.isForMainFrame() || url.contains(".js") || url.contains(".css");
@@ -439,4 +461,4 @@ public class WebEngineManager {
         }
         return true;
     }
-            }
+    }
