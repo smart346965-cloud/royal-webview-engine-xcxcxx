@@ -11,14 +11,11 @@ import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 import androidx.webkit.WebViewRenderProcess;
 import androidx.webkit.WebViewRenderProcessClient;
-
-import java.io.InputStream;
 
 /**
  * =========================================================
@@ -84,6 +81,9 @@ public final class RoyalWebViewHost {
             // تطبيق الإعدادات الاحترافية
             RoyalHybridEngine.prime(webViewInstance, applicationContext);
 
+            // 🚀 تجهيز ملفات الحقن مرة واحدة داخل الذاكرة
+            WebEnhancer.preload(applicationContext);
+
             if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_VIEW_RENDERER_CLIENT_BASIC_USAGE)) {
 
                 WebViewCompat.setWebViewRenderProcessClient(
@@ -113,13 +113,6 @@ public final class RoyalWebViewHost {
             // 🌉 حقن الجسر الملكي (Bridge) لربط الجافاسكريبت بمحرك الشبكة
             // نمرر webViewInstance للجسر لكي يتمكن من التحدث مع المتصفح لاحقاً
             webViewInstance.addJavascriptInterface(new RoyalJsBridge(webViewInstance), "RoyalJsBridge");
-
-            webViewInstance.setWebViewClient(new WebViewClient() {
-                @Override
-                public void onPageFinished(WebView view, String url) {
-                    injectTelescope(view);
-                }
-            });
 
             // 🔥 التحسين 3: تسخين محرك V8 مباشرة بدلاً من about:blank
             webViewInstance.evaluateJavascript("(function(){return 'warm';})()", null);
@@ -241,20 +234,4 @@ public final class RoyalWebViewHost {
         Log.i(TAG, "Detaches   : " + detachCount);
         Log.i(TAG, "====================================");
     }
-
-    private static void injectTelescope(WebView view) {
-        try {
-            InputStream is = view.getContext().getAssets().open("royal-telescope.js");
-            byte[] buffer = new byte[is.available()];
-            is.read(buffer);
-            is.close();
-
-            String script = new String(buffer, "UTF-8");
-            view.evaluateJavascript(script, null);
-
-            Log.i(TAG, "🔭 Telescope Injected Successfully.");
-        } catch (Exception e) {
-            Log.e(TAG, "❌ Telescope injection failed", e);
-        }
-    }
-        }
+            }
