@@ -153,11 +153,17 @@ public class WebEngineManager {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-
-                // 👑 انتهى الرندر بالكامل
-                RoyalNetworkEngine.notifyRenderIdle();
-
+                // 1. حقن المحرك
                 WebEnhancer.apply(view, context);
+                
+                // 2. 👑 ربط الجسر الملكي لإخفاء السبلاش فور وصول الإشارة
+                view.addJavascriptInterface(new RoyalJsBridge(view), "RoyalBridge");
+                
+                // 3. ضبط الـ Callback لإخفاء السبلاش (بدلاً من الانتظار الأعمى)
+                RoyalJsBridge bridge = new RoyalJsBridge(view);
+                bridge.setOnHideSplashCallback(WebEngineManager.this::removeSplashSmoothly);
+                
+                RoyalNetworkEngine.notifyRenderIdle();
 
                 if (WebViewFeature.isFeatureSupported(
                         WebViewFeature.VISUAL_STATE_CALLBACK)) {
@@ -196,16 +202,6 @@ public class WebEngineManager {
 
                 WebEnhancer.apply(view, context);
                 syncStatusBarColor(view);
-
-                view.postDelayed(() -> {
-
-                    if (!splashChecker.isRemoved()) {
-                        removeSplashSmoothly();
-                    }
-
-                    RoyalNetworkEngine.notifyRenderIdle();
-
-                }, 150);
             }
 
             @Override
@@ -461,4 +457,4 @@ public class WebEngineManager {
         }
         return true;
     }
-    }
+            }
