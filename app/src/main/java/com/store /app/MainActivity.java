@@ -22,9 +22,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // 🛡️ درع الوميض: قبل أي بناء للواجهة
+        // 🛡️ درع الوميض: جعل الخلفية مطابقة للون السبلاش بدلاً من الأبيض الصارخ
         setTheme(R.style.AppTheme_NoSplash);
-        getWindow().setBackgroundDrawable(new ColorDrawable(Color.WHITE));
+        getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#F3F4F6")));
         
         super.onCreate(savedInstanceState);
 
@@ -100,6 +100,15 @@ public class MainActivity extends AppCompatActivity {
         );
         engineManager.init();
 
+        // 👑 المزامنة المطلقة: ربط السبلاش النيتف بإشارة اكتمال الرندر القادمة من الويب (JS)
+        if (RoyalWebViewHost.getBridge() != null) {
+            RoyalWebViewHost.getBridge().setOnHideSplashCallback(() -> {
+                if (!splashRemoved) {
+                    engineManager.removeSplashSmoothly();
+                }
+            });
+        }
+
         // Fail-safe: حماية تجربة المستخدم بإخفاء الشاشة إن حدث تأخير استثنائي
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (!splashRemoved && activeWebView != null) {
@@ -108,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
                 progressBar.setVisibility(View.GONE);
                 splashRemoved = true;
             }
-        }, 10000);
+        }, 100);
     }
 
     @Override
@@ -117,4 +126,4 @@ public class MainActivity extends AppCompatActivity {
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
-}
+    }
