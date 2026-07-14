@@ -56,6 +56,10 @@ public final class RoyalNetworkEngine {
             isLowEndDevice = am.isLowRamDevice();
         } catch (Exception ignored) {}
 
+        // 👑 تفعيل قنوات الاتصال الساخنة (Keep-Alive) وضبط الـ Multiplexing على مستوى النظام
+        System.setProperty("http.keepAlive", "true");
+        System.setProperty("http.maxConnections", "30"); // رفع سقف القنوات المفتوحة مسبقاً لتمرير عدة طلبات معاً
+
         RoyalCacheManager.init(context);
         Log.i(TAG, "🌐 Royal Network Advisor V5 Engine Active (Anti-Freeze Edition).");
     }
@@ -251,7 +255,16 @@ public final class RoyalNetworkEngine {
                 } catch (Exception ignored) {
                 } finally {
                     if (connection != null) {
-                        try { connection.disconnect(); } catch (Exception ignored) {}
+                        try {
+                            // 👑 بدلاً من disconnect() التي تقتل الـ Socket، نقوم بتفريغ أي بيانات متبقية 
+                            // وإغلاق الـ Stream فقط. هذا يترك القناة مفتوحة ودافئة (Socket Reuse) لـ HTTP/2
+                            if (connection.getErrorStream() != null) {
+                                byte[] buf = new byte[1024];
+                                InputStream es = connection.getErrorStream();
+                                while (es.read(buf) > 0) { /* drain error stream */ }
+                                es.close();
+                            }
+                        } catch (Exception ignored) {}
                     }
                 }
             });
