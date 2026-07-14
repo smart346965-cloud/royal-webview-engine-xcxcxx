@@ -33,7 +33,9 @@ public final class WebEnhancer {
 
         preload(context);
 
-        webView.evaluateJavascript(cachedPayload, null);
+        if (cachedPayload != null) {
+            webView.evaluateJavascript(cachedPayload, null);
+        }
         Log.i(TAG, "✅ Royal Engine injected & cached in RAM successfully");
     }
 
@@ -117,4 +119,4 @@ public final class WebEnhancer {
     }
 
     private WebEnhancer() {}
-    }
+}
