@@ -136,25 +136,12 @@ public final class RoyalCacheManager {
                 return null;
             }
 
-            if (meta.etag == null && meta.lastModified == null) {
-
-                if (System.currentTimeMillis() > meta.expiry) {
-
-                    file.delete();
-                    metaFile(key).delete();
-
-                    return null;
-                }
-
-            }
-
-            // 🔥 احترام expiry من السيرفر
+            // 👑 تطبيق معمارية Stale-While-Revalidate (العرض الفوري والتحديث بالخلفية)
             if (System.currentTimeMillis() > meta.expiry) {
-
-                file.delete();
-                metaFile(key).delete();
-
-                return null;
+                Map<String, String> vHeaders = getValidationHeaders(url);
+                // إرسال أمر للمحرك الشبكي ليقوم بالتحقق في الخلفية
+                RoyalNetworkEngine.revalidateInBackground(url, vHeaders);
+                // ⚡ لا نحذف الملف ولا نرجع null، بل سنستمر في الكود لنعرض النسخة الحالية فوراً!
             }
 
             try {
@@ -235,10 +222,13 @@ public final class RoyalCacheManager {
                 CacheMeta meta = parseHeaders(url, headers);
                 if (meta == null) return;
 
-                File file = new File(cacheDir, key);
-                if (file.exists()) return;
+                File finalFile = new File(cacheDir, key);
+                if (finalFile.exists() && finalFile.length() > 0) return;
 
-                FileOutputStream fos = new FileOutputStream(file);
+                // 🛡️ الكتابة في ملف مؤقت أولاً (Atomic Write)
+                File tmpFile = new File(cacheDir, key + ".tmp");
+                FileOutputStream fos = new FileOutputStream(tmpFile);
+
                 BufferedInputStream bis = new BufferedInputStream(inputStream);
 
                 byte[] memBuffer = null;
@@ -263,9 +253,13 @@ public final class RoyalCacheManager {
                 fos.close();
                 bis.close();
 
-                if (file.length() == 0) {
-                    file.delete();
+                // 🛡️ إنهاء عملية الكتابة الذرية بأمان
+                if (tmpFile.length() == 0) {
+                    tmpFile.delete();
                     return;
+                } else {
+                    // استبدال الملف القديم بالجديد في جزء من الثانية
+                    tmpFile.renameTo(finalFile); 
                 }
 
                 // ⚡ RAM promotion
@@ -544,6 +538,24 @@ public final class RoyalCacheManager {
         } catch (Exception ignored) {}
     }
 
+    // 👑 تحديث وقت انتهاء الصلاحية فقط عند استلام 304 Not Modified
+    public static void updateValidationMeta(String url, Map<String, List<String>> newHeaders) {
+        String key = md5(url);
+        CacheMeta oldMeta = loadMeta(key);
+        
+        if (oldMeta != null) {
+            CacheMeta updatedMeta = parseHeaders(url, newHeaders);
+            if (updatedMeta != null) {
+                // دمج البيانات الجديدة مع القديمة
+                oldMeta.expiry = updatedMeta.expiry;
+                if (updatedMeta.etag != null) oldMeta.etag = updatedMeta.etag;
+                if (updatedMeta.lastModified != null) oldMeta.lastModified = updatedMeta.lastModified;
+                
+                saveMeta(key, oldMeta);
+            }
+        }
+    }
+
     private static CacheMeta loadMeta(String key) {
         File f = metaFile(key);
         if (!f.exists()) return null;
@@ -610,4 +622,4 @@ public final class RoyalCacheManager {
 
         return meta;
     }
-                }
+                    }
