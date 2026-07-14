@@ -142,7 +142,6 @@ public class WebEngineManager {
             );
         }
 
-        settings.setAllowFileAccess(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSupportMultipleWindows(false);
         settings.setSupportZoom(false);
@@ -267,23 +266,31 @@ public class WebEngineManager {
                 triggerOfflineProtection(view, failingUrl);
             }
 
-            // 🌐 فلتر الشبكة الملكي (The Royal Interceptor)
+            // 🌐 فلتر الشبكة الملكي المطور (The Royal Interceptor V2)
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                if (!NetworkMonitor.isInternetAvailable(context)
-                        && request.isForMainFrame()) {
+                if (request == null || request.getUrl() == null) return null;
 
-                    return new WebResourceResponse(
-                            "text/html",
-                            "UTF-8",
-                            null
-                    );
+                // 1. حماية وضع الأوفلاين السريع
+                if (!NetworkMonitor.isInternetAvailable(context) && request.isForMainFrame()) {
+                    return new WebResourceResponse("text/html", "UTF-8", null);
                 }
 
+                String url = request.getUrl().toString();
+
+                // 2. 👑 حيلة رفع الأولوية للتمرير الفوري للموارد الحساسة (HTML / JS / CSS)
+                boolean isCoreResource = request.isForMainFrame() || url.contains(".js") || url.contains(".css");
+                if (isCoreResource) {
+                    // إعطاء تلميح للمعالج بأن هذا الخيط يحتاج طاقة قصوى الآن لتقديم الكاش
+                    android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_FOREGROUND);
+                }
+
+                // 3. استدعاء المحرك الذكي للكاش والشبكة
                 WebResourceResponse royalResponse = RoyalNetworkEngine.interceptRequest(request);
                 if (royalResponse != null) {
                     return royalResponse;
                 }
+                
                 return super.shouldInterceptRequest(view, request);
             }
 
@@ -432,4 +439,4 @@ public class WebEngineManager {
         }
         return true;
     }
-                        }
+            }
