@@ -7,6 +7,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 
 import java.io.BufferedInputStream;
+import java.io.InputStream; // 👑 هذا هو السطر المفقود الذي يجب إضافته هنا
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Collections;
