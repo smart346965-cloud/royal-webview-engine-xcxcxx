@@ -26,7 +26,8 @@ public final class RoyalCacheManager {
 
     private static File cacheDir;
 
-    private static final long MAX_DISK_CACHE = 150L * 1024 * 1024;
+    // 👑 تحويل السقف إلى متغير ديناميكي يلتهم المساحة المتاحة بذكاء
+    private static long MAX_DISK_CACHE;
 
     private static final int RAM_LIMIT = 20 * 1024 * 1024;
     private static final int RAM_THRESHOLD = 2 * 1024 * 1024;
@@ -59,6 +60,7 @@ public final class RoyalCacheManager {
         MIME.put(".woff2","font/woff2");
         MIME.put(".mjs","application/javascript");
         MIME.put(".svg","image/svg+xml");
+        MIME.put(".html","text/html");
     }
 
     private RoyalCacheManager() {}
@@ -66,8 +68,21 @@ public final class RoyalCacheManager {
     public static void init(Context context) {
         if (cacheDir != null) return;
 
-        cacheDir = new File(context.getCacheDir(), "royal_cache_v3");
+        // 👑 التوجيه نحو الذاكرة الخارجية إذا كانت متوفرة للحصول على مساحة أكبر
+        File extCache = context.getExternalCacheDir();
+        File targetDir = (extCache != null && extCache.getUsableSpace() > 200L * 1024 * 1024) 
+                ? extCache : context.getCacheDir();
+                
+        cacheDir = new File(targetDir, "royal_cache_v4"); // ترقية الإصدار
         if (!cacheDir.exists()) cacheDir.mkdirs();
+
+        // 👑 التهام المساحة باحترافية: 15% من مساحة الهاتف الفارغة! 
+        // بحد أدنى 300 ميجابايت، وحد أقصى 2 جيجابايت (للمتاجر الضخمة).
+        long usableSpace = cacheDir.getUsableSpace();
+        MAX_DISK_CACHE = Math.max(300L * 1024 * 1024, 
+                         Math.min((long)(usableSpace * 0.15), 2048L * 1024 * 1024));
+                         
+        Log.i(TAG, "🔥 Royal Cache Storage Allocated: " + (MAX_DISK_CACHE / (1024 * 1024)) + " MB");
 
         performLRUEviction();
     }
@@ -333,17 +348,20 @@ public final class RoyalCacheManager {
         if (clean.contains("/order")) return false;
         if (clean.contains("/invoice")) return false;
 
-        // HTML
-        if (clean.endsWith(".html")) return false;
-        if (clean.endsWith(".php")) return false;
-        if (clean.endsWith(".jsp")) return false;
-        if (clean.endsWith(".asp")) return false;
-        if (clean.endsWith(".aspx")) return false;
+        // HTML - 👑 مسموح الآن للـ HTML بالمرور للقضاء على التجمد
+        if (clean.endsWith(".php") || clean.endsWith(".jsp") || clean.endsWith(".asp") || clean.endsWith(".aspx")) return false;
 
         for (String e : EXT) {
             if (clean.endsWith(e)) {
                 return true;
             }
+        }
+        
+        // 👑 ذكاء اصطياد روابط المتاجر: 
+        // المتاجر الحديثة (مثل site.com/product/123) ليس لها امتداد في النهاية.
+        // إذا لم يكن الرابط يحتوي على امتداد ملف، فهو غالباً صفحة HTML هيكلية، سنسمح بتخزينها!
+        if (!clean.matches(".*\\.[a-z0-9]{2,5}$")) {
+            return true; 
         }
 
         return false;
@@ -386,7 +404,13 @@ public final class RoyalCacheManager {
         if (u.endsWith(".avif"))
             return 7L * 24 * 60 * 60 * 1000;
 
-        return 60L * 60 * 1000;
+        // 👑 إذا كان الرابط هو صفحة HTML للمتجر، نعطيه TTL قصير جداً (5 دقائق)
+        // هذا يضمن أن يفتح المتجر فوراً، ولكنه سيجبر المحرك على جلب النسخة الأحدث إذا تغيرت الأسعار.
+        if (u.endsWith(".html") || !u.matches(".*\\.[a-z0-9]{2,5}$")) {
+            return 5L * 60 * 1000; // 5 دقائق فقط
+        }
+
+        return 60L * 60 * 1000; // ساعة لباقي الملفات المجهولة
     }
 
     // ==========================================
@@ -578,4 +602,4 @@ public final class RoyalCacheManager {
 
         return meta;
     }
-        }
+                            }
