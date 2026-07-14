@@ -62,6 +62,9 @@ public final class WebEnhancer {
             appendScript(payload, context, path);
         }
 
+        // 👑 التعديل: إضافة إشارة الجاهزية (Handshake) في نهاية السكربت
+        payload.append("\n/* 🏁 Handshake Signal */\n");
+        payload.append("if (window.RoyalBridge) { window.RoyalBridge.hideSplash(); }\n");
         payload.append("\n}catch(e){console.error(e);}\n})();");
 
         cachedPayload = payload.toString();
@@ -118,4 +121,4 @@ public final class WebEnhancer {
     }
 
     private WebEnhancer() {}
-                }
+             }
