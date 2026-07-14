@@ -99,10 +99,18 @@ public final class RoyalCacheManager {
 
         try {
             if (cacheDir == null) return null;
-            if (request.isForMainFrame()) return null;
 
             String url = request.getUrl().toString();
             if (!"GET".equalsIgnoreCase(request.getMethod())) return null;
+
+            // 👑 حماية النخبة: منع تخزين أي طلب API خفي يتنكر كرابط عادي
+            Map<String, String> requestHeaders = request.getRequestHeaders();
+            if (requestHeaders != null) {
+                String accept = requestHeaders.get("Accept");
+                if (accept != null && (accept.contains("application/json") || accept.contains("text/event-stream"))) {
+                    return null; // دعه يمر للإنترنت لأنه بيانات ديناميكية
+                }
+            }
 
             if (!isCacheable(url)) return null;
 
@@ -602,4 +610,4 @@ public final class RoyalCacheManager {
 
         return meta;
     }
-                            }
+                }
