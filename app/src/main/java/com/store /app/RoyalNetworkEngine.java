@@ -7,7 +7,7 @@ import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 
 import java.io.BufferedInputStream;
-import java.io.InputStream; // 👑 هذا هو السطر المفقود الذي يجب إضافته هنا
+import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Collections;
@@ -270,6 +270,59 @@ public final class RoyalNetworkEngine {
                 }
             });
         } catch (Exception ignored) {} // حماية الطابور الممتلئ من التسبب بـ Crash
+    }
+
+    // 👑 العصب السري: المُدقق الشبكي في الخلفية (Background Revalidator)
+    public static void revalidateInBackground(String urlString, java.util.Map<String, String> validationHeaders) {
+        if (isLowEndDevice || !allowPrefetch) return;
+
+        try {
+            prefetchExecutor.execute(() -> {
+                HttpURLConnection connection = null;
+                try {
+                    URL url = new URL(urlString);
+                    connection = (HttpURLConnection) url.openConnection();
+                    connection.setRequestMethod("GET");
+                    connection.setUseCaches(false); // إجبار التخاطب مع السيرفر الحقيقي
+                    connection.setInstanceFollowRedirects(true);
+                    connection.setConnectTimeout(3000);
+                    connection.setReadTimeout(3000);
+
+                    // حقن رؤوس التحقق (If-None-Match / If-Modified-Since)
+                    if (validationHeaders != null) {
+                        for (java.util.Map.Entry<String, String> entry : validationHeaders.entrySet()) {
+                            connection.setRequestProperty(entry.getKey(), entry.getValue());
+                        }
+                    }
+
+                    int code = connection.getResponseCode();
+
+                    if (code == 304) {
+                        // ⚡ السيرفر يقول: الملف لم يتغير. تحديث الـ Metadata فقط لتمديد الصلاحية.
+                        RoyalCacheManager.updateValidationMeta(urlString, connection.getHeaderFields());
+                    } else if (code >= 200 && code < 300) {
+                        // 🔄 السيرفر يقول: هناك نسخة جديدة. تحميلها واستبدالها بصمت في الخلفية.
+                        RoyalCacheManager.store(
+                                urlString,
+                                new BufferedInputStream(connection.getInputStream()),
+                                connection.getHeaderFields()
+                        );
+                    }
+                } catch (Exception ignored) {
+                } finally {
+                    if (connection != null) {
+                        try {
+                            if (connection.getErrorStream() != null) {
+                                byte[] buf = new byte[1024];
+                                InputStream es = connection.getErrorStream();
+                                while (es.read(buf) > 0) { /* drain error stream */ }
+                                es.close();
+                            }
+                        } catch (Exception ignored) {}
+                    }
+                }
+            });
+        } catch (Exception ignored) {}
     }
 
     public static void notifyRenderStart() { renderBusy = true; }
