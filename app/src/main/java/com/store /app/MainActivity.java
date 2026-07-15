@@ -1,4 +1,4 @@
-herepackage com.store.app;
+package com.store.app;
 
 import android.os.Bundle;
 import android.view.View;
