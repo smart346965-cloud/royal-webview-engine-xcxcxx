@@ -148,36 +148,39 @@ public class WebEngineManager {
     }
 
     private void attachClients() {
-        // 🚀 وداعاً Capacitor! الـ WebViewClient الآن خالص لمحركنا
         webView.setWebViewClient(new WebViewClient() {
 
             @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                // 👁️ [Panopticon Telemetry] تسجيل أول بايت واستقبال الطلب
+                RoyalPanopticon.recordRequestSent();
+            }
+
+            @Override
             public void onPageFinished(WebView view, String url) {
+                // 👁️ [Panopticon Telemetry] اكتمال عملية التحميل والرندرة الهيكلية
+                RoyalPanopticon.recordNavigationComplete();
+
                 // 1. حقن المحرك
                 WebEnhancer.apply(view, context);
                 
                 // 2. 👑 ربط الجسر الملكي لإخفاء السبلاش فور وصول الإشارة
-                view.addJavascriptInterface(new RoyalJsBridge(view), "RoyalBridge");
-                
-                // 3. ضبط الـ Callback لإخفاء السبلاش (بدلاً من الانتظار الأعمى)
+                // تعديل احترافي: نمرر كائن الـ Bridge المجهز بالـ Callback مباشرة للـ JavascriptInterface
                 RoyalJsBridge bridge = new RoyalJsBridge(view);
                 bridge.setOnHideSplashCallback(WebEngineManager.this::removeSplashSmoothly);
+                view.addJavascriptInterface(bridge, "RoyalBridge");
                 
                 RoyalNetworkEngine.notifyRenderIdle();
 
-                if (WebViewFeature.isFeatureSupported(
-                        WebViewFeature.VISUAL_STATE_CALLBACK)) {
-
+                if (WebViewFeature.isFeatureSupported(WebViewFeature.VISUAL_STATE_CALLBACK)) {
                     WebViewCompat.postVisualStateCallback(
                             view,
                             System.currentTimeMillis(),
                             new WebViewCompat.VisualStateCallback() {
-
                                 @Override
                                 public void onComplete(long requestId) {
-
                                     RoyalNetworkEngine.notifyRenderIdle();
-
                                 }
                             });
                 }
@@ -185,6 +188,9 @@ public class WebEngineManager {
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
+                // 👁️ [Panopticon Telemetry] المتصفح يبدأ في عرض أول رسمة مرئية للمستخدم
+                RoyalPanopticon.recordFirstByteReceived();
+                RoyalPanopticon.recordDomInteractive();
 
                 RoyalNetworkEngine.notifyRenderStart();
 
@@ -207,9 +213,7 @@ public class WebEngineManager {
             @Override
             public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
                 android.util.Log.e("RoyalEngine", "☠️ FATAL: Chromium Renderer crashed! Auto-Recovery...");
-
                 RoyalNetworkEngine.notifyRenderIdle();
-
                 RoyalWebViewHost.destroy();
                 if (activity != null) {
                     RoyalWebViewHost.create(activity.getApplicationContext());
@@ -218,38 +222,22 @@ public class WebEngineManager {
                 return true;
             }
 
-            // 🛡️ درع الحماية الملكي: يمنع ديناصور كروم نهائياً ويحترم الكاش
             private void triggerOfflineProtection(WebView view, String failingUrl) {
                 if (failingUrl != null && !failingUrl.startsWith("file:///android_asset/")) {
-
                     RoyalNetworkEngine.notifyRenderIdle();
-
-                    // 1. الإيقاف القسري: نوقف محرك كروم فوراً في مساره لمنعه من رسم صفحة الخطأ
                     view.stopLoading();
-
-                    // 2. التنظيف العميق (Flush): نقوم بمسح التاريخ
                     view.clearHistory();
-
-                    // 3. التوجيه السلس: نضع أمر التحميل في طابور الـ UI لضمان تنظيف الشاشة أولاً ثم عرض الأوفلاين
                     view.post(() -> {
-
-                        String offline =
-                                "file:///android_asset/public/offline.html?origin="
-                                        + Uri.encode(failingUrl);
-
+                        String offline = "file:///android_asset/public/offline.html?origin=" + Uri.encode(failingUrl);
                         view.loadUrl(offline);
-
                     });
                 }
             }
 
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                // التأكد من أن الفشل في الصفحة الرئيسية (وليس في صورة أو ملف فرعي)
                 if (request != null && request.isForMainFrame()) {
-
                     RoyalNetworkEngine.notifyRenderIdle();
-
                     triggerOfflineProtection(view, request.getUrl().toString());
                 }
             }
@@ -258,24 +246,17 @@ public class WebEngineManager {
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 RoyalNetworkEngine.notifyRenderIdle();
-
                 triggerOfflineProtection(view, failingUrl);
             }
 
-            // 🌐 فلتر الشبكة الملكي المطور (The Royal Interceptor V2)
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 if (request == null || request.getUrl() == null) return null;
-
                 String url = request.getUrl().toString();
 
-                // 👑 الوكيل المحلي (Local Proxy): تقديم Service Worker من داخل الهاتف بسرعة 0ms
-                // هذا الإجراء موثوق وقياسي 100% ويستخدم نفس الـ API الرسمي من جوجل
                 if (url.endsWith("/nexus-service-worker.js")) {
                     try {
                         java.io.InputStream swStream = context.getAssets().open("public/js/nexus-service-worker.js");
-                        
-                        // تمرير هيدرز أمنية صارمة لإخبار المتصفح أن هذا ملف شرعي
                         java.util.Map<String, String> headers = new java.util.HashMap<>();
                         headers.put("Content-Type", "application/javascript");
                         headers.put("Service-Worker-Allowed", "/");
@@ -291,20 +272,23 @@ public class WebEngineManager {
                     }
                 }
 
-                // 1. حماية وضع الأوفلاين السريع
                 if (!NetworkMonitor.isInternetAvailable(context) && request.isForMainFrame()) {
                     return new WebResourceResponse("text/html", "UTF-8", null);
                 }
 
-                // 2. 👑 حيلة رفع الأولوية للتمرير الفوري للموارد الحساسة (HTML / JS / CSS)
                 boolean isCoreResource = request.isForMainFrame() || url.contains(".js") || url.contains(".css");
                 if (isCoreResource) {
-                    // إعطاء تلميح للمعالج بأن هذا الخيط يحتاج طاقة قصوى الآن لتقديم الكاش
                     android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_FOREGROUND);
                 }
 
-                // 3. استدعاء المحرك الذكي للكاش والشبكة
+                // 👁️ تتبع كفاءة الـ Network Interceptor الفرعي وتسجيل أدائه
+                long startIntercept = System.currentTimeMillis();
                 WebResourceResponse royalResponse = RoyalNetworkEngine.interceptRequest(request);
+                long duration = System.currentTimeMillis() - startIntercept;
+                
+                // نرسل السجلات فوراً لمحرك الفحص لمعرفة سرعة استرجاع الكاش الملكي
+                RoyalPanopticon.recordExecution("NetworkInterceptor", duration, true, 0);
+
                 if (royalResponse != null) {
                     return royalResponse;
                 }
@@ -317,7 +301,6 @@ public class WebEngineManager {
                 if (request != null && request.getUrl() != null) {
                     Uri uri = request.getUrl();
                     String scheme = uri.getScheme();
-
                     if (scheme == null) return false;
 
                     if (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("whatsapp") || scheme.equals("intent")) {
@@ -325,16 +308,10 @@ public class WebEngineManager {
                     }
 
                     if (scheme.equals("http") || scheme.equals("https")) {
-
                         if (!NetworkMonitor.isInternetAvailable(context)) {
-
-                            String offline =
-                                    "file:///android_asset/public/offline.html?origin="
-                                            + Uri.encode(uri.toString());
-
+                            String offline = "file:///android_asset/public/offline.html?origin=" + Uri.encode(uri.toString());
                             view.stopLoading();
                             view.loadUrl(offline);
-
                             return true;
                         }
 
@@ -342,6 +319,8 @@ public class WebEngineManager {
                             return handleUriLogic(uri, request.isForMainFrame());
                         }
 
+                        // 👁️ [Panopticon Telemetry] تسجيل النقرة وتجهيز محرك قياس انتقال الصفحة
+                        RoyalPanopticon.recordUserClick(uri.toString());
                         return false;
                     }
                 }
@@ -352,6 +331,7 @@ public class WebEngineManager {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
                 if (url != null) {
+                    RoyalPanopticon.recordUserClick(url);
                     return handleUriLogic(Uri.parse(url), true);
                 }
                 return false;
@@ -366,8 +346,7 @@ public class WebEngineManager {
                     progressBar.animate()
                             .alpha(0f)
                             .setDuration(150)
-                            .withEndAction(() ->
-                                    progressBar.setVisibility(View.GONE))
+                            .withEndAction(() -> progressBar.setVisibility(View.GONE))
                             .start();
                 } else {
                     progressBar.setAlpha(1f);
@@ -457,4 +436,4 @@ public class WebEngineManager {
         }
         return true;
     }
-            }
+                }
