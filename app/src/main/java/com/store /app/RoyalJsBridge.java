@@ -7,14 +7,15 @@ import android.webkit.WebView;
 public class RoyalJsBridge {
 
     private static final String TAG = "RoyalJsBridge";
-
     private final WebView webView;
-
-    // متغير لتخزين دالة إخفاء السبلاش
     private Runnable onHideSplashCallback;
 
     public RoyalJsBridge(WebView webView) {
         this.webView = webView;
+        
+        // 👁️ تسجيل الهيكل الشجري للمحركات داخل نظام التشخيص الملكي عند بناء الجسر
+        RoyalPanopticon.registerDependency("WebChromeEngine", "JS-BridgeChannel");
+        RoyalPanopticon.registerDependency("JS-BridgeChannel", "TapWarmupEngine");
     }
 
     public void setOnHideSplashCallback(Runnable callback) {
@@ -28,9 +29,18 @@ public class RoyalJsBridge {
     @JavascriptInterface
     public void warmup(String url) {
         try {
+            // 👁️ إرسال نبضة للمحرك تفيد بأنه يشتغل الآن بنشاط وكفاءة
+            RoyalPanopticon.pulse("TapWarmupEngine");
+            
+            long start = System.currentTimeMillis();
             RoyalNetworkEngine.warmupLink(url);
+            long duration = System.currentTimeMillis() - start;
+            
+            // تسجيل سرعة تتبع تسخين الروابط
+            RoyalPanopticon.recordExecution("TapWarmupEngine", duration, true, 0);
         } catch (Exception e) {
             Log.e(TAG, "Warmup failed", e);
+            RoyalPanopticon.recordExecution("TapWarmupEngine", 0, false, 0);
         }
     }
 
@@ -40,7 +50,8 @@ public class RoyalJsBridge {
     @JavascriptInterface
     public void scrollHint(int velocity) {
         try {
-            // مستقبلًا يمكن ربطه بمحرك prefetch
+            // 👁️ إشعار المحرك بنبضة التمرير الحالية
+            RoyalPanopticon.pulse("JS-BridgeChannel");
             Log.d(TAG, "Scroll velocity: " + velocity);
         } catch (Exception e) {
             Log.e(TAG, "scrollHint error", e);
@@ -53,6 +64,7 @@ public class RoyalJsBridge {
     @JavascriptInterface
     public void log(String message) {
         Log.d(TAG, "JS: " + message);
+        RoyalPanopticon.pulse("WebChromeEngine");
     }
 
     /**
@@ -62,7 +74,6 @@ public class RoyalJsBridge {
     @JavascriptInterface
     public void hideSplash() {
         if (onHideSplashCallback != null) {
-            // يجب تنفيذ الإخفاء على الـ UI Thread
             if (webView != null) {
                 webView.post(onHideSplashCallback);
             }
@@ -70,13 +81,14 @@ public class RoyalJsBridge {
     }
 
     /**
-     * 👁️‍🗨️ Panopticon Telemetry Receiver
+     * 👁️‍عون Panopticon Telemetry Receiver
      * يستقبل الحالة الصحية للمتصفح من الجافاسكريبت ويرسلها للعقل المدبر
      */
     @JavascriptInterface
     public void reportBrowserState(int domNodes, int fps, long jsMemoryMB, int longTasks) {
         try {
             RoyalPanopticon.syncBrowserState(domNodes, fps, jsMemoryMB, longTasks);
+            RoyalPanopticon.pulse("WebChromeEngine");
         } catch (Exception e) {
             Log.e(TAG, "Failed to sync browser state", e);
         }
@@ -94,7 +106,6 @@ public class RoyalJsBridge {
                     .replace("$", "\\$");
 
             final String js = "console.log(`" + report + "`);";
-
             webView.post(() -> webView.evaluateJavascript(js, null));
 
         } catch (Exception e) {
@@ -107,9 +118,6 @@ public class RoyalJsBridge {
      */
     public void dispatchToJS(String script) {
         if (webView == null) return;
-
-        webView.post(() ->
-                webView.evaluateJavascript(script, null)
-        );
+        webView.post(() -> webView.evaluateJavascript(script, null));
     }
 }
