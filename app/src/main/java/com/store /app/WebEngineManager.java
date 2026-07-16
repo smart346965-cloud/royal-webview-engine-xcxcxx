@@ -5,8 +5,6 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
-import android.os.Handler;
-import android.os.Looper;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.*;
@@ -33,8 +31,6 @@ public class WebEngineManager {
     private final Runnable scrollFinishedRunnable =
             RoyalNetworkEngine::notifyScrollFinished;
 
-    private long splashStartTime = 0;
-
     public interface SplashStateChecker {
         boolean isRemoved();
     }
@@ -56,10 +52,6 @@ public class WebEngineManager {
         this.activity = (context instanceof android.app.Activity)
                 ? (android.app.Activity) context
                 : null;
-    }
-
-    public void setSplashStartTime(long startTime) {
-        this.splashStartTime = startTime;
     }
 
     public void init() {
@@ -106,21 +98,14 @@ public class WebEngineManager {
 
     public void removeSplashSmoothly() {
         if (activity == null || splashChecker.isRemoved()) return;
-
-        long currentTime = System.currentTimeMillis();
-        long elapsedTime = currentTime - splashStartTime;
-        long remainingTime = Math.max(0, 1800 - elapsedTime); // نضمن بقاءه 1.8 ثانية على الأقل
-
         activity.runOnUiThread(() -> {
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (splashOverlay != null) {
-                    splashOverlay.animate()
-                            .alpha(0f)
-                            .setDuration(400) // خروج ناعم جداً
-                            .withEndAction(this::removeSplashInstantly)
-                            .start();
-                }
-            }, remainingTime);
+            if (splashOverlay != null) {
+                splashOverlay.animate()
+                        .alpha(0f)
+                        .setDuration(300)
+                        .withEndAction(this::removeSplashInstantly)
+                        .start();
+            }
         });
     }
 
@@ -170,13 +155,17 @@ public class WebEngineManager {
                 super.onPageStarted(view, url, favicon);
                 RoyalPanopticon.recordRequestSent();
 
-                // 🛡️ استراتيجية (Anti-Flash): 
-                // إذا كان المستخدم يضغط "رجوع"، لا نلمس الـ Alpha أبداً. 
-                // نترك الصفحة الحالية معروضة حتى تكتمل رندرة الصفحة السابقة في الخلفية.
-                if (view.getSettings().getCacheMode() != WebSettings.LOAD_CACHE_ELSE_NETWORK) {
-                    // فقط في حالة التنقل الجديد "للأمام" نقوم بالإخفاء لتهيئة الرندرة
-                    // ولكننا جعلناها 0.01f بدلاً من 0 لتجنب "تعطيل" الرندرة في بعض نسخ أندرويد
-                    view.setAlpha(0.01f); 
+                // [المنطق الذكي]
+                // إذا كان المستخدم يتقدم للأمام (أول مرة يفتح الرابط)، نخفي الويب فيو لنعالج الوميض بالسبلاش
+                // ولكن إذا كان "رجوع" (canGoBack هو دليلنا)، لا تجعل الـ Alpha صفر!
+                
+                // نتحقق إذا كانت العملية هي "رجوع" عبر فحص الكاش المفضل
+                if (view.getSettings().getCacheMode() == WebSettings.LOAD_CACHE_ELSE_NETWORK) {
+                    // نحن في حالة رجوع سريعة جداً.. ابقِ الويب فيو ظاهراً 100%
+                    view.setAlpha(1f); 
+                } else {
+                    // تنقل عادي.. إخفاء بسيط لتجنب ومضة التحميل الجديد
+                    // view.setAlpha(0f); // جرب تعطيل هذا السطر تماماً إذا كنت تريد سلاسة مطلقة في التنقل أيضاً
                 }
             }
 
@@ -211,15 +200,17 @@ public class WebEngineManager {
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
-                // 🚀 بمجرد أن تصبح الصفحة الجديدة (سواء رجوع أو أمام) جاهزة للعرض بصرياً
-                view.animate()
-                        .alpha(1f)
-                        .setDuration(150)
-                        .withStartAction(() -> {
-                            // إزالة السبلاش فوراً إذا كانت الصفحة جاهزة
-                            removeSplashSmoothly();
-                        })
-                        .start();
+                // [السر البصري] لا نظهر الويب فيو إلا عندما يتم رسم أول بكسل حقيقي من الصفحة الجديدة
+                view.postDelayed(() -> {
+                    if (view.getAlpha() < 1f) {
+                        view.animate()
+                            .alpha(1f)
+                            .setDuration(120) // ومضة ناعمة جداً لا تلاحظ
+                            .start();
+                    }
+                    // إخفاء أي طبقات تحميل باقية
+                    removeSplashSmoothly();
+                }, 50); 
 
                 RoyalNetworkEngine.notifyRenderStart();
                 WebEnhancer.apply(view, context);
@@ -458,4 +449,4 @@ public class WebEngineManager {
         }
         return true;
     }
-        }
+            }
