@@ -6,6 +6,8 @@ import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
 import android.widget.ProgressBar;
+import android.widget.ImageView;
+import android.widget.FrameLayout;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Handler;
@@ -25,6 +27,8 @@ public class MainActivity extends AppCompatActivity {
     private WebEngineManager engineManager;
     private WebView activeWebView;
     private ProgressBar progressBar;
+    private long splashStartTime = 0;
+    private static final long MIN_SPLASH_TIME = 1800; // الحد الأدنى لبقاء السبلاش (1.8 ثانية) لضمان الاستقرار البصري
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,6 +72,9 @@ public class MainActivity extends AppCompatActivity {
                     // قفل المحرك على الكاش لسرعة الضوء
                     activeWebView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
                     
+                    // أضف هذا السطر لضمان عدم حدوث أي "رجفة" بصرية
+                    activeWebView.setAlpha(1f); 
+                    
                     // إيقاف أي لودر أو بروجرس بار فوراً لأن الصفحة ستظهر فوراً
                     if (progressBar != null) {
                         progressBar.setVisibility(View.GONE);
@@ -97,57 +104,47 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupSplashScreen() {
-        // شاشة التحميل البرمجية (Splash Overlay)
-        final View splashOverlay = new View(this);
-        splashOverlay.setBackgroundColor(Color.parseColor("#F3F4F6"));
-        splashOverlay.setAlpha(1f);
+        splashStartTime = System.currentTimeMillis();
 
-        addContentView(splashOverlay, new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT));
+        // 1. الحاوية الرئيسية (خلفية السبلاش)
+        final FrameLayout splashContainer = new FrameLayout(this);
+        splashContainer.setBackgroundColor(Color.parseColor("#F3F4F6"));
+        splashContainer.setAlpha(1f);
 
-        // شريط التقدم النحيف الأنيق (Progress Bar)
+        // 2. إضافة الأيقونة في المنتصف (Unified Icon)
+        ImageView splashIcon = new ImageView(this);
+        // ملاحظة: استبدل R.mipmap.ic_launcher بأيقونة السبلاش الخاصة بك
+        splashIcon.setImageResource(R.mipmap.ic_launcher); 
+        
+        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(
+                280, 280, android.view.Gravity.CENTER); // حجم الأيقونة 280px
+        splashIcon.setLayoutParams(iconParams);
+        
+        splashContainer.addView(splashIcon);
+
+        addContentView(splashContainer, new ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        // 3. شريط التقدم النحيف (وضعناه فوق الحاوية)
         progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progressBar.setMax(100);
-        progressBar.setProgress(0);
-        progressBar.setIndeterminate(false);
-        
-        ViewGroup.LayoutParams progressParams = new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 6);
-        progressBar.setLayoutParams(progressParams);
         progressBar.setScaleY(0.6f);
-        
-        addContentView(progressBar, progressParams);
+        addContentView(progressBar, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 8));
 
-        // 7️⃣ ربط المحرك بمدير المحتوى ومراقبة التحميل
+        // 4. ربط المدير
         engineManager = new WebEngineManager(
-                this,
-                activeWebView,
-                splashOverlay,
-                progressBar,
-                () -> splashRemoved = true,
-                () -> splashRemoved
+                this, activeWebView, splashContainer, progressBar,
+                () -> splashRemoved = true, () -> splashRemoved
         );
+        engineManager.setSplashStartTime(splashStartTime); // تمرير وقت البدء للمدير
         engineManager.init();
 
-        // 👑 المزامنة المطلقة: ربط السبلاش نيتف بإشارة اكتمال الرندر القادمة من الويب (JS Bridge)
+        // 5. المزامنة مع الجسر
         if (RoyalWebViewHost.getBridge() != null) {
             RoyalWebViewHost.getBridge().setOnHideSplashCallback(() -> {
-                if (!splashRemoved) {
-                    engineManager.removeSplashSmoothly();
-                }
+                if (!splashRemoved) engineManager.removeSplashSmoothly();
             });
         }
-
-        // Fail-safe: إخفاء الشاشة تلقائياً في حالة حدوث تأخير خارق للعادة لحماية الـ UX
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (!splashRemoved && activeWebView != null) {
-                Log.w(TAG, "Fail-safe: Forced reveal after timeout");
-                splashOverlay.setVisibility(View.GONE);
-                progressBar.setVisibility(View.GONE);
-                splashRemoved = true;
-            }
-        }, 100); // القيمة 100ms للمزامنة اللحظية الفائقة، ويمكن زيادتها حسب الحاجة
     }
 
     @Override
@@ -178,4 +175,4 @@ public class MainActivity extends AppCompatActivity {
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
-                                                 }
+    }
