@@ -66,11 +66,28 @@ public final class RoyalHybridEngine {
             // إعدادات لتقليل زمن الرندرة (Rendering Latency)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 // منع الويب فيو من إعادة طلب الصفحة عند الرجوع (توفير 0ms)
-                settings.setAppCacheEnabled(true); 
-                settings.setAppCachePath(context.getCacheDir().getPath());
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to apply advanced cache flags", e);
+        }
+
+        // ==========================================
+        // 5️⃣ Modern Native UX & Security (البدائل الحديثة والاحترافية)
+        // ==========================================
+        
+        // 1. التثبيت البصري (Text Lock): يمنع إعدادات خط الهاتف من تخريب تصميم (CSS) المتجر
+        settings.setTextZoom(100);
+
+        // 2. سلوك التطبيقات الحقيقية: إخفاء خيار "البحث في الويب" عند قيام العميل بتحديد نص في المتجر
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            settings.setDisabledActionModeMenuItems(
+                WebSettings.MENU_ITEM_WEB_SEARCH | WebSettings.MENU_ITEM_PROCESS_TEXT
+            );
+        }
+
+        // 3. تأمين التصفح الصامت (Safe Browsing): تفعيل حماية جوجل المدمجة دون إزعاج المستخدم
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            settings.setSafeBrowsingEnabled(true);
         }
 
         // 💥 ربط الكاش بالجلسة: تفعيل الكوكيز لربط التخزين المؤقت بجلسة المستخدم
