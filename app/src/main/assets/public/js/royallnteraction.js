@@ -62,7 +62,8 @@
             let isScrolling = false;
             let activeLink = null;
 
-            // 1. عند اللمس: ومضة بصرية + تسخين
+            // [تعديل جراحي في royallnteraction.js - TapEngine]
+
             document.addEventListener("touchstart", (e) => {
                 if (e.touches.length === 0) return;
 
@@ -72,18 +73,17 @@
 
                 const link = e.target.closest("a[href]");
                 if (link && link.href) {
-                    try {
-                        const url = link.href;
-                        if (url.startsWith("mailto:") || url.startsWith("tel:") || url.startsWith("javascript:") || url.startsWith("#")) return;
-                        if (new URL(url).origin !== window.location.origin) return;
-
-                        activeLink = link;
-                        
-                        // إضافة الومضة البصرية
-                        link.classList.remove('royal-tap-release');
+                    activeLink = link;
+                    
+                    // 🚀 استجابة لمسية بصرية فورية (تسبق قرار المتصفح)
+                    requestAnimationFrame(() => {
                         link.classList.add('royal-tap-active');
+                    });
 
-                    } catch (err) {}
+                    // 🧠 تسخين الرابط في النيتف فور اللمس (توقع بنسبة 90%)
+                    if (window.RoyalBridge) {
+                        window.RoyalBridge.warmup(link.href);
+                    }
                 }
             }, { passive: true });
 
@@ -102,9 +102,10 @@
                 }
             }, { passive: true });
 
-            // 3. عند رفع الإصبع: انتقال فوري (إذا لم يكن سكرول)
+            // تحديث قسم touchend لضمان الانتقال اللحظي
             document.addEventListener("touchend", (e) => {
                 if (isScrolling || !activeLink) {
+                    if (activeLink) activeLink.classList.remove('royal-tap-active');
                     activeLink = null;
                     return;
                 }
@@ -112,31 +113,13 @@
                 const link = activeLink;
                 activeLink = null;
 
-                // إزالة الومضة البصرية بنعومة
-                link.classList.remove('royal-tap-active');
-                link.classList.add('royal-tap-release');
-                setTimeout(() => link.classList.remove('royal-tap-release'), 300);
-
-                // 👑 السحر هنا: انتقال ذكي دون قتل المتصفح
-                // لا تتدخل في الروابط الخاصة
-                if (
-                    link.target === "_blank" ||
-                    e.defaultPrevented ||
-                    e.metaKey || e.ctrlKey || e.shiftKey
-                ) return;
-
-                // فقط الروابط الداخلية
-                const isSameOrigin = link.origin === location.origin;
-
-                if (isSameOrigin) {
-                    // دعم SPA (إذا الموقع يستخدم pushState)
-                    if (window.history && window.history.pushState) {
-                        window.location.href = link.href;
-                    } else {
-                        window.location.assign(link.href);
-                    }
+                // إزالة الومضة بنعومة
+                link.classList.replace('royal-tap-active', 'royal-tap-release');
+                
+                // إذا كان الرابط داخلياً، اطلب الانتقال فوراً لكسر حاجز الـ 300ms
+                if (link.origin === location.origin) {
+                    window.location.href = link.href;
                 }
-
             }, { passive: false }); // passive: false ضرورية هنا لكي يعمل preventDefault
         }
     };
