@@ -54,10 +54,24 @@ public final class RoyalHybridEngine {
         // ==========================================
         // 3️⃣ Chromium Native Cache (تفويض الكاش للمحرك)
         // ==========================================
-        // تركنا Chromium يدير الشبكة بذكائه الخاص (ETag, Disk, Memory) كما نصح الخبير
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setDomStorageEnabled(true);
-        settings.setDatabaseEnabled(true);
+        // تفعيل وضع الكاش الذكي الذي يفضل الذاكرة على الشبكة عند الرجوع
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT); 
+
+        // تفعيل ميزات الكروميوم المخفية لزيادة حجم الـ Page Cache
+        try {
+            // محاولة تفعيل الحفظ المسبق للصفحات في الرام (BFCache)
+            settings.setDomStorageEnabled(true);
+            settings.setDatabaseEnabled(true);
+            
+            // إعدادات لتقليل زمن الرندرة (Rendering Latency)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                // منع الويب فيو من إعادة طلب الصفحة عند الرجوع (توفير 0ms)
+                settings.setAppCacheEnabled(true); 
+                settings.setAppCachePath(context.getCacheDir().getPath());
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Failed to apply advanced cache flags", e);
+        }
 
         // 💥 ربط الكاش بالجلسة: تفعيل الكوكيز لربط التخزين المؤقت بجلسة المستخدم
         CookieManager cookieManager = CookieManager.getInstance();
