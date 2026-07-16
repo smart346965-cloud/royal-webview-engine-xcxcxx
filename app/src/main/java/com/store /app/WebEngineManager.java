@@ -153,8 +153,20 @@ public class WebEngineManager {
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
-                // 👁️ [Panopticon Telemetry] تسجيل أول بايت واستقبال الطلب
                 RoyalPanopticon.recordRequestSent();
+
+                // [المنطق الذكي]
+                // إذا كان المستخدم يتقدم للأمام (أول مرة يفتح الرابط)، نخفي الويب فيو لنعالج الوميض بالسبلاش
+                // ولكن إذا كان "رجوع" (canGoBack هو دليلنا)، لا تجعل الـ Alpha صفر!
+                
+                // نتحقق إذا كانت العملية هي "رجوع" عبر فحص الكاش المفضل
+                if (view.getSettings().getCacheMode() == WebSettings.LOAD_CACHE_ELSE_NETWORK) {
+                    // نحن في حالة رجوع سريعة جداً.. ابقِ الويب فيو ظاهراً 100%
+                    view.setAlpha(1f); 
+                } else {
+                    // تنقل عادي.. إخفاء بسيط لتجنب ومضة التحميل الجديد
+                    // view.setAlpha(0f); // جرب تعطيل هذا السطر تماماً إذا كنت تريد سلاسة مطلقة في التنقل أيضاً
+                }
             }
 
             @Override
@@ -437,4 +449,4 @@ public class WebEngineManager {
         }
         return true;
     }
-                }
+                        }
