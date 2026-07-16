@@ -10,201 +10,124 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
 import android.webkit.CookieManager;
-import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
-
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 import androidx.webkit.WebViewRenderProcess;
 import androidx.webkit.WebViewRenderProcessClient;
 
-/**
- * =========================================================
- * 👑 ROYAL WEBVIEW HOST (The Immortal Engine Core V3)
- * =========================================================
- * Architecture: Thread-Safe Singleton, V8 Pre-Warmed,
- * Memory-Leak Proof (Soft Restart), Crash Resilient.
- */
 public final class RoyalWebViewHost {
-
     private static final String TAG = "RoyalWebViewHost";
-
-    // ==========================================
-    // 1️⃣ Core Instance Layer
-    // ==========================================
     private static WebView webViewInstance;
     private static MutableContextWrapper contextWrapper;
-    private static boolean isInitialized = false;
+    private static volatile boolean isInitialized = false; // استخدام volatile لضمان الرؤية بين الخيوط
 
-    // ==========================================
-    // 2️⃣ Engine State & Telemetry
-    // ==========================================
-    private static long creationTime = 0;
-    private static int attachCount = 0;
-    private static int detachCount = 0;
-
-    // 🕒 Soft Restart System (طبقة حماية الذاكرة)
     private static long lastRestartTime = 0;
-    private static final long MAX_UPTIME = 3 * 60 * 60 * 1000L; // 3 ساعات
-
-    // 🌉 مسار الوصول المباشر للجسر الملكي
+    private static final long MAX_UPTIME = 3 * 60 * 60 * 1000L;
     private static RoyalJsBridge jsBridgeInstance;
 
     private RoyalWebViewHost() {}
 
-    /**
-     * 🚀 CREATE: يولد الويب فيو ويسخنه في الخلفية (Thread-Safe)
-     */
     public static synchronized void create(Context applicationContext) {
-        if (Looper.myLooper() != Looper.getMainLooper()) {
-            throw new IllegalStateException("❌ FATAL: WebView must be created on UI thread");
-        }
-
-        if (isInitialized && webViewInstance != null) return;
-
-        Log.i(TAG, "🚀 Rocket Ignite: Pre-warming Engine at CPU Level...");
-        creationTime = System.currentTimeMillis();
-        lastRestartTime = System.currentTimeMillis();
-
-        contextWrapper = new MutableContextWrapper(applicationContext.getApplicationContext());
+        if (Looper.myLooper() != Looper.getMainLooper()) return;
+        
+        // إذا كان هناك نسخة قديمة أو قيد الإنشاء، لا تفعل شيئاً
+        if (webViewInstance != null && isInitialized) return;
 
         try {
-            // 1. تسريع الكوكيز بمزامنة فورية قبل خلق الويب فيو
+            Log.i(TAG, "🚀 Rocket Ignite: Pre-warming Immortal Engine...");
+            
+            if (contextWrapper == null) {
+                contextWrapper = new MutableContextWrapper(applicationContext.getApplicationContext());
+            }
+
+            // تسريع الكوكيز
             CookieManager cookieManager = CookieManager.getInstance();
             cookieManager.setAcceptCookie(true);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                cookieManager.setAcceptThirdPartyCookies(null, true); 
-            }
 
+            // خلق النسخة
             webViewInstance = new WebView(contextWrapper);
-            isInitialized = true;
-
-            // 2. إعطاء المحرك أولوية "المعالج الأمامي" فوراً (High Priority Rendering)
+            
+            // إعدادات الأولوية القصوى
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                // إجبار الأندرويد على اعتبار هذه العملية (Critical) لا يمكن تأخيرها
                 webViewInstance.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_BOUND, true);
             }
-
-            // 3. تفعيل تسريع العتاد (Hardware Acceleration) بأقصى قوة
             webViewInstance.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
-            // تطبيق الإعدادات الملكية
+            // حقن المحركات
             RoyalHybridEngine.prime(webViewInstance, applicationContext);
-            WebEnhancer.preload(applicationContext);
-
-            // 4. السحر هنا: تحميل بيانات وهمية "فائقة الخفة" لتشغيل محرك الرندرة فوراً
-            // بدلاً من evaluateJavascript فقط، سنقوم بحقن هيكل فارغ يشغل الـ GPU
-            String v8Ignite = "<html><body style='background:transparent;'></body></html>";
-            webViewInstance.loadDataWithBaseURL("https://kith.com/", v8Ignite, "text/html", "UTF-8", null);
-
-            // تثبيت محرك الشبكة
             RoyalNetworkEngine.install(applicationContext);
-
+            
             jsBridgeInstance = new RoyalJsBridge(webViewInstance);
             webViewInstance.addJavascriptInterface(jsBridgeInstance, "RoyalBridge");
 
-            Log.i(TAG, "✅ Engine is HOT and Ready in Background.");
+            // تسخين الـ GPU والـ V8 بهيكل خفيف جداً
+            String warmUpHtml = "<html><body style='background:#F3F4F6;'></body></html>";
+            webViewInstance.loadDataWithBaseURL("https://kith.com/", warmUpHtml, "text/html", "UTF-8", null);
+
+            lastRestartTime = System.currentTimeMillis();
+            
+            // 👑 الآن فقط نعلن أن المحرك جاهز (بعد نجاح كل الخطوات)
+            isInitialized = true;
+            Log.i(TAG, "✅ Engine is HOT and Ready.");
+
         } catch (Exception e) {
-            Log.e(TAG, "❌ FATAL: Pre-warm Failed.", e);
+            isInitialized = false;
+            webViewInstance = null;
+            Log.e(TAG, "❌ FATAL: Initialization failed, resetting...", e);
         }
     }
 
-    /**
-     * 🔗 ATTACH: يربط الويب فيو بالشاشة الحالية (Thread-Safe)
-     */
     public static synchronized WebView attach(Activity activity) {
-        // 🛡️ طبقة 3: Soft Restart System (الفحص الذكي قبل الربط)
-        checkSoftRestart(activity.getApplicationContext());
-
-        if (webViewInstance == null) {
-            throw new IllegalStateException("❌ Call create() before attach()!");
+        // إذا لم يكن جاهزاً، قم بخلقه فوراً (حماية من الكراش)
+        if (!isInitialized || webViewInstance == null) {
+            create(activity.getApplicationContext());
         }
 
-        Log.i(TAG, "🔗 Attaching WebView to: " + activity.getClass().getSimpleName());
+        checkSoftRestart(activity.getApplicationContext());
 
-        // 🛡️ طبقة 1: Plugin Rebinding System (يحدث تلقائياً بتغيير السياق هنا)
+        Log.i(TAG, "🔗 Attaching to: " + activity.getClass().getSimpleName());
+        
         contextWrapper.setBaseContext(activity);
-
         safeRemoveFromParent();
 
         webViewInstance.onResume();
         webViewInstance.resumeTimers();
 
-        attachCount++;
         return webViewInstance;
     }
 
-    /**
-     * 🧲 DETACH: يفصل الويب فيو ويخبئه في الذاكرة (Thread-Safe)
-     */
     public static synchronized void detach() {
         if (webViewInstance == null) return;
-
-        Log.i(TAG, "🧲 Detaching WebView (Entering Hibernation)...");
-
         safeRemoveFromParent();
-
         if (contextWrapper != null) {
             contextWrapper.setBaseContext(webViewInstance.getContext().getApplicationContext());
         }
-
         webViewInstance.onPause();
         webViewInstance.pauseTimers();
-
-        detachCount++;
     }
 
-    /**
-     * 💣 DESTROY: تدمير آمن تماماً
-     */
     public static synchronized void destroy() {
         if (webViewInstance != null) {
-            Log.w(TAG, "💣 Destroying Royal WebView Host.");
             safeRemoveFromParent();
-
-            try {
-                webViewInstance.stopLoading();
-                webViewInstance.loadUrl("about:blank");
-                webViewInstance.pauseTimers();
-                webViewInstance.destroy();
-            } catch (Exception ignored) {}
-
+            webViewInstance.loadUrl("about:blank");
+            webViewInstance.destroy();
             webViewInstance = null;
-            contextWrapper = null;
             isInitialized = false;
         }
-
-        // 🔥 الإنقاذ الجراحي: تصفير حالة الإعدادات لكي تُطبق على الويب فيو الجديد!
         RoyalHybridEngine.reset();
     }
 
-    // 👑 دالة جلب الويب فيو الخالد
-    public static WebView get() {
-        return webViewInstance;
-    }
-
-    // ==========================================
-    // 🛡️ أنظمة الحماية الداخلية (Internal Guards)
-    // ==========================================
-
-    /**
-     * 🔄 Soft Restart System (إعادة التشغيل لحماية الرام)
-     */
-    public static synchronized void checkSoftRestart(Context context) {
-        long now = System.currentTimeMillis();
-        if (now - lastRestartTime > MAX_UPTIME) {
-            Log.w(TAG, "🔄 Soft restarting WebView to clear Chromium Memory Leak (3 Hours Reached).");
+    public static void checkSoftRestart(Context context) {
+        if (System.currentTimeMillis() - lastRestartTime > MAX_UPTIME) {
             destroy();
             create(context);
         }
     }
 
     private static void safeRemoveFromParent() {
-        if (webViewInstance != null) {
-            ViewParent parent = webViewInstance.getParent();
-            if (parent instanceof ViewGroup) {
-                ((ViewGroup) parent).removeView(webViewInstance);
-            }
+        if (webViewInstance != null && webViewInstance.getParent() instanceof ViewGroup) {
+            ((ViewGroup) webViewInstance.getParent()).removeView(webViewInstance);
         }
     }
 
@@ -212,17 +135,7 @@ public final class RoyalWebViewHost {
         return isInitialized && webViewInstance != null;
     }
 
-    public static void stats() {
-        Log.i(TAG, "📊 === ROYAL ENGINE TELEMETRY === 📊");
-        Log.i(TAG, "Status     : " + (isInitialized ? "ONLINE 🟢" : "OFFLINE 🔴"));
-        Log.i(TAG, "Uptime     : " + (System.currentTimeMillis() - creationTime) + "ms");
-        Log.i(TAG, "Attaches   : " + attachCount);
-        Log.i(TAG, "Detaches   : " + detachCount);
-        Log.i(TAG, "====================================");
-    }
-
-    // 👑 دالة جلب الجسر البرمجي لربطه بالواجهة
     public static RoyalJsBridge getBridge() {
         return jsBridgeInstance;
     }
-    }
+                    }
