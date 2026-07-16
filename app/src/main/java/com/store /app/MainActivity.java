@@ -28,7 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private WebView activeWebView;
     private ProgressBar progressBar;
     private long splashStartTime = 0;
-    private static final long MIN_SPLASH_TIME = 1800; // الحد الأدنى لبقاء السبلاش (1.8 ثانية) لضمان الاستقرار البصري
+    private static final long MIN_SPLASH_TIME = 4500; // الحد الأدنى لبقاء السبلاش (1.8 ثانية) لضمان الاستقرار البصري
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
