@@ -581,23 +581,15 @@ public final class RoyalCacheManager {
             Map<String, List<String>> headers) {
 
         CacheMeta meta = new CacheMeta();
-
         long now = System.currentTimeMillis();
 
-        // 🔥 Cache-Control
+        // 🔥 القبضة الحديدية: التجاهل التام لأوامر الخوادم التي تمنع الكاش
         List<String> cc = headers.get("Cache-Control");
         if (cc != null) {
             String val = cc.get(0);
             String lower = val.toLowerCase(Locale.US);
 
-            if (lower.contains("no-store")) return null;
-
-            if (lower.contains("no-cache")) return null;
-
-            if (lower.contains("private")) return null;
-
-            if (lower.contains("must-revalidate")) return null;
-
+            // استخلاص الـ max-age إن وجد، وتجاهل أوامر no-cache و no-store تماماً
             if (lower.contains("max-age")) {
                 try {
                     String s = lower.split("max-age=")[1].split(",")[0];
@@ -607,8 +599,9 @@ public final class RoyalCacheManager {
             }
         }
 
-        // fallback
-        if (meta.expiry == 0) {
+        // 👑 إذا لم يرسل الخادم وقت انتهاء، أو أرسل وقتاً منتهياً (لإجبارنا على التحديث)، 
+        // سنرفض ذلك ونفرض المدة الزمنية الخاصة بمحركنا بالقوة!
+        if (meta.expiry == 0 || meta.expiry <= now) {
             meta.expiry = now + resolveTTL(url);
         }
 
@@ -622,4 +615,39 @@ public final class RoyalCacheManager {
 
         return meta;
     }
-                    }
+
+    // ==========================================
+    // 📥 DOWNLOAD MANAGER DIRECTORY
+    // ==========================================
+
+    /**
+     * 🔥 يتولى معالجة تحميل الملفات الكبيرة لتخفيف الضغط عن المحرك الأساسي
+     */
+    public static void downloadLargeFile(Context context, String url, String userAgent, String contentDisposition, String mimeType) {
+        try {
+            android.app.DownloadManager.Request request = new android.app.DownloadManager.Request(android.net.Uri.parse(url));
+            request.setMimeType(mimeType);
+            
+            // حقن الكوكيز لضمان صلاحية التحميل من المواقع التي تتطلب تسجيل دخول
+            String cookies = android.webkit.CookieManager.getInstance().getCookie(url);
+            if (cookies != null) {
+                request.addRequestHeader("cookie", cookies);
+            }
+            
+            request.addRequestHeader("User-Agent", userAgent);
+            request.setDescription("Downloading file...");
+            
+            String fileName = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimeType);
+            request.setTitle(fileName);
+            request.allowScanningByMediaScanner();
+            request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+            request.setDestinationInExternalPublicDir(android.os.Environment.DIRECTORY_DOWNLOADS, fileName);
+            
+            android.app.DownloadManager dm = (android.app.DownloadManager) context.getSystemService(Context.DOWNLOAD_SERVICE);
+            if (dm != null) dm.enqueue(request);
+            
+        } catch (Exception e) {
+            Log.e(TAG, "Royal Download Manager failed", e);
+        }
+    }
+            }
