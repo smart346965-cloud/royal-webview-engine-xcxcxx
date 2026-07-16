@@ -32,6 +32,9 @@ public final class RoyalCacheManager {
     private static final int RAM_LIMIT = 20 * 1024 * 1024;
     private static final int RAM_THRESHOLD = 2 * 1024 * 1024;
 
+    // [حقن في بداية RoyalCacheManager]
+    private static final long BLIND_TRUST_WINDOW = 100; // نافذة الثقة (100 مللي ثانية)
+
     private static final LruCache<String, byte[]> memoryCache =
             new LruCache<String, byte[]>(RAM_LIMIT) {
                 @Override
@@ -137,12 +140,27 @@ public final class RoyalCacheManager {
             }
 
             // 👑 تطبيق معمارية Stale-While-Revalidate (العرض الفوري والتحديث بالخلفية)
-            if (System.currentTimeMillis() > meta.expiry) {
-                Map<String, String> vHeaders = getValidationHeaders(url);
-                // إرسال أمر للمحرك الشبكي ليقوم بالتحقق في الخلفية
-                RoyalNetworkEngine.revalidateInBackground(url, vHeaders);
-                // ⚡ لا نحذف الملف ولا نرجع null، بل سنستمر في الكود لنعرض النسخة الحالية فوراً!
+            // [تعديل جراحي داخل دالة intercept]
+            // ابحث عن: if (System.currentTimeMillis() > meta.expiry) { ... }
+
+            // المنطق الجديد: الثقة العمياء
+            long now = System.currentTimeMillis();
+            boolean isExpired = now > meta.expiry;
+            boolean isRoyalDomain = url.contains("kith.com"); // الدومين الملكي
+
+            if (isExpired) {
+                if (isRoyalDomain && (now - meta.created < 24 * 60 * 60 * 1000)) {
+                    // 🚀 استراتيجية الثقة العمياء: إذا كان الدومين ملكياً والملف لم يمر عليه يوم، 
+                    // سنرسله فوراً من الكاش ونقوم بالتحديث في الخلفية بصمت تماماً.
+                    RoyalNetworkEngine.revalidateInBackground(url, getValidationHeaders(url));
+                    Log.d(TAG, "⚡ Blind Cache Trust Triggered for: " + url);
+                } else {
+                    // تحديث عادي للمواقع الأخرى
+                    Map<String, String> vHeaders = getValidationHeaders(url);
+                    RoyalNetworkEngine.revalidateInBackground(url, vHeaders);
+                }
             }
+            // العرض الفوري يكمل طريقه هنا سواء من الـ RAM أو الـ Disk
 
             try {
                 // 🔥 SMALL → RAM
@@ -650,4 +668,4 @@ public final class RoyalCacheManager {
             Log.e(TAG, "Royal Download Manager failed", e);
         }
     }
-            }
+        }
