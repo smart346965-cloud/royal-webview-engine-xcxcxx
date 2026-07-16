@@ -16,6 +16,10 @@ import androidx.webkit.WebViewFeature;
 import androidx.webkit.WebViewRenderProcess;
 import androidx.webkit.WebViewRenderProcessClient;
 
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+
 public final class RoyalWebViewHost {
     private static final String TAG = "RoyalWebViewHost";
     private static WebView webViewInstance;
@@ -66,6 +70,26 @@ public final class RoyalWebViewHost {
             webViewInstance.loadDataWithBaseURL("https://kith.com/", warmUpHtml, "text/html", "UTF-8", null);
 
             lastRestartTime = System.currentTimeMillis();
+            
+            // [تعديل جراحي داخل RoyalWebViewHost.java - دالة create]
+
+            // 🔥 المحور الرابع: تسخين السوكيت (Socket Priming)
+            new Thread(() -> {
+                try {
+                    URL url = new URL("https://kith.com/");
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("HEAD"); // طلب خفيف جداً فقط لفتح القناة
+                    conn.setConnectTimeout(2000);
+                    conn.setReadTimeout(2000);
+                    conn.connect();
+                    // الحفاظ على السوكيت مفتوحاً في حوض الاتصالات (Connection Pool)
+                    InputStream is = conn.getInputStream();
+                    if (is != null) is.close(); 
+                    Log.i(TAG, "🌐 Network Socket Warmed Up for Royal Domain.");
+                } catch (Exception e) {
+                    Log.e(TAG, "Socket warmup failed", e);
+                }
+            }).start();
             
             // 👑 الآن فقط نعلن أن المحرك جاهز (بعد نجاح كل الخطوات)
             isInitialized = true;
@@ -138,4 +162,4 @@ public final class RoyalWebViewHost {
     public static RoyalJsBridge getBridge() {
         return jsBridgeInstance;
     }
-                    }
+    }
