@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(activeWebView);
 
         // 3️⃣ توجيه المحرك للهدف
-        String targetUrl = "https://au.koala.com/"; 
+        String targetUrl = "https://kith.com/"; 
         if (activeWebView.getUrl() == null || !activeWebView.getUrl().startsWith("http")) {
             activeWebView.loadUrl(targetUrl);
         }
