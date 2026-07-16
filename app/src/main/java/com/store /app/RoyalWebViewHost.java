@@ -9,6 +9,7 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewParent;
+import android.webkit.CookieManager;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebView;
 
@@ -55,74 +56,56 @@ public final class RoyalWebViewHost {
      * 🚀 CREATE: يولد الويب فيو ويسخنه في الخلفية (Thread-Safe)
      */
     public static synchronized void create(Context applicationContext) {
-        // 🛡️ التحسين 1: فرض التنفيذ على UI Thread لمنع الانهيار الصامت
         if (Looper.myLooper() != Looper.getMainLooper()) {
             throw new IllegalStateException("❌ FATAL: WebView must be created on UI thread");
         }
 
-        if (isInitialized && webViewInstance != null) {
-            return;
-        }
+        if (isInitialized && webViewInstance != null) return;
 
-        Log.i(TAG, "⚙️ Initiating Royal WebView Host...");
+        Log.i(TAG, "🚀 Rocket Ignite: Pre-warming Engine at CPU Level...");
         creationTime = System.currentTimeMillis();
         lastRestartTime = System.currentTimeMillis();
 
         contextWrapper = new MutableContextWrapper(applicationContext.getApplicationContext());
 
         try {
+            // 1. تسريع الكوكيز بمزامنة فورية قبل خلق الويب فيو
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.setAcceptCookie(true);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                cookieManager.setAcceptThirdPartyCookies(null, true); 
+            }
+
             webViewInstance = new WebView(contextWrapper);
             isInitialized = true;
 
-            if (!BuildConfig.DEBUG) {
-                WebView.setWebContentsDebuggingEnabled(false);
+            // 2. إعطاء المحرك أولوية "المعالج الأمامي" فوراً (High Priority Rendering)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                // إجبار الأندرويد على اعتبار هذه العملية (Critical) لا يمكن تأخيرها
+                webViewInstance.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_BOUND, true);
             }
 
-            // 🛡️ التحسين 2: تفعيل Hardware Acceleration للرسوميات
+            // 3. تفعيل تسريع العتاد (Hardware Acceleration) بأقصى قوة
             webViewInstance.setLayerType(View.LAYER_TYPE_HARDWARE, null);
 
-            // تطبيق الإعدادات الاحترافية
+            // تطبيق الإعدادات الملكية
             RoyalHybridEngine.prime(webViewInstance, applicationContext);
-
-            // 🚀 تجهيز ملفات الحقن مرة واحدة داخل الذاكرة
             WebEnhancer.preload(applicationContext);
 
-            if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_VIEW_RENDERER_CLIENT_BASIC_USAGE)) {
+            // 4. السحر هنا: تحميل بيانات وهمية "فائقة الخفة" لتشغيل محرك الرندرة فوراً
+            // بدلاً من evaluateJavascript فقط، سنقوم بحقن هيكل فارغ يشغل الـ GPU
+            String v8Ignite = "<html><body style='background:transparent;'></body></html>";
+            webViewInstance.loadDataWithBaseURL("https://kith.com/", v8Ignite, "text/html", "UTF-8", null);
 
-                WebViewCompat.setWebViewRenderProcessClient(
-                        webViewInstance,
-                        Runnable::run,
-                        new WebViewRenderProcessClient() {
-
-                            @Override
-                            public void onRenderProcessResponsive(
-                                    WebView view,
-                                    WebViewRenderProcess renderer) {
-                            }
-
-                            @Override
-                            public void onRenderProcessUnresponsive(
-                                    WebView view,
-                                    WebViewRenderProcess renderer) {
-
-                                RoyalNetworkEngine.notifyRenderStart();
-                            }
-                        });
-            }
-
-            // 🌐 تثبيت محرك الشبكة الملكي
+            // تثبيت محرك الشبكة
             RoyalNetworkEngine.install(applicationContext);
 
-            // 🌉 حقن الجسر الملكي وحفظ النسخة لربطها بالواجهة لاحقاً
             jsBridgeInstance = new RoyalJsBridge(webViewInstance);
-            webViewInstance.addJavascriptInterface(jsBridgeInstance, "RoyalJsBridge");
+            webViewInstance.addJavascriptInterface(jsBridgeInstance, "RoyalBridge");
 
-            // 🔥 التحسين 3: تسخين محرك V8 مباشرة بدلاً من about:blank
-            webViewInstance.evaluateJavascript("(function(){return 'warm';})()", null);
-
-            Log.i(TAG, "✅ Immortal WebView Created, Bridge Injected & V8 Warmed Up.");
+            Log.i(TAG, "✅ Engine is HOT and Ready in Background.");
         } catch (Exception e) {
-            Log.e(TAG, "❌ FATAL: Failed to create WebView instance.", e);
+            Log.e(TAG, "❌ FATAL: Pre-warm Failed.", e);
         }
     }
 
@@ -242,4 +225,4 @@ public final class RoyalWebViewHost {
     public static RoyalJsBridge getBridge() {
         return jsBridgeInstance;
     }
-                }
+    }
