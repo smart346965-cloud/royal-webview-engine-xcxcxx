@@ -325,6 +325,13 @@ public final class RoyalNetworkEngine {
         } catch (Exception ignored) {}
     }
 
+    // [إضافة دالة جديدة في RoyalNetworkEngine.java]
+    public static void primeCriticalAssets(String[] urls) {
+        for (String url : urls) {
+            scheduleWarmup(url, true); // أولوية قصوى
+        }
+    }
+
     public static void notifyRenderStart() { renderBusy = true; }
     public static void notifyRenderIdle() { renderBusy = false; }
     public static void setNetworkPrefetchAllowed(boolean allowed) { allowPrefetch = allowed; }
@@ -379,4 +386,4 @@ public final class RoyalNetworkEngine {
             });
         } catch (Exception ignored) {}
     }
-    }
+                        }
