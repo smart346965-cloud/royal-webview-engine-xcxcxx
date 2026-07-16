@@ -188,24 +188,19 @@ public class WebEngineManager {
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
-                // 👁️ [Panopticon Telemetry] المتصفح يبدأ في عرض أول رسمة مرئية للمستخدم
-                RoyalPanopticon.recordFirstByteReceived();
-                RoyalPanopticon.recordDomInteractive();
+                // [السر البصري] لا نظهر الويب فيو إلا عندما يتم رسم أول بكسل حقيقي من الصفحة الجديدة
+                view.postDelayed(() -> {
+                    if (view.getAlpha() < 1f) {
+                        view.animate()
+                            .alpha(1f)
+                            .setDuration(120) // ومضة ناعمة جداً لا تلاحظ
+                            .start();
+                    }
+                    // إخفاء أي طبقات تحميل باقية
+                    removeSplashSmoothly();
+                }, 50); 
 
                 RoyalNetworkEngine.notifyRenderStart();
-
-                if (!NetworkMonitor.isInternetAvailable(context)) {
-                    return;
-                }
-
-                if (view.getAlpha() == 0f) {
-                    view.animate().alpha(1f).setDuration(180).start();
-                }
-
-                if (trustedHost == null && url != null) {
-                    setTrustedOrigin(url);
-                }
-
                 WebEnhancer.apply(view, context);
                 syncStatusBarColor(view);
             }
@@ -298,33 +293,39 @@ public class WebEngineManager {
 
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                if (request != null && request.getUrl() != null) {
-                    Uri uri = request.getUrl();
-                    String scheme = uri.getScheme();
-                    if (scheme == null) return false;
+                if (request == null || request.getUrl() == null) return false;
+                Uri uri = request.getUrl();
+                String scheme = uri.getScheme();
+                String url = uri.toString();
 
-                    if (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("whatsapp") || scheme.equals("intent")) {
-                        return handleUriLogic(uri, request.isForMainFrame());
+                // 1. السماح بالتطبيقات الخارجية المحددة فقط (واتساب، اتصال، الخ)
+                if (scheme != null && (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("whatsapp") || scheme.equals("intent") || scheme.equals("sms"))) {
+                    try {
+                        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                        context.startActivity(intent);
+                    } catch (Exception e) {
+                        android.util.Log.e("RoyalEngine", "External App not found for: " + scheme);
                     }
+                    return true; // تم التعامل معه بنجاح، لا تفتح كروم
+                }
 
-                    if (scheme.equals("http") || scheme.equals("https")) {
-                        if (!NetworkMonitor.isInternetAvailable(context)) {
-                            String offline = "file:///android_asset/public/offline.html?origin=" + Uri.encode(uri.toString());
-                            view.stopLoading();
-                            view.loadUrl(offline);
-                            return true;
-                        }
-
-                        if (!isSameOrigin(uri)) {
-                            return handleUriLogic(uri, request.isForMainFrame());
-                        }
-
-                        // 👁️ [Panopticon Telemetry] تسجيل النقرة وتجهيز محرك قياس انتقال الصفحة
-                        RoyalPanopticon.recordUserClick(uri.toString());
-                        return false;
+                // 2. قفل الحصن: إذا كان الرابط http أو https
+                if (scheme != null && (scheme.equals("http") || scheme.equals("https"))) {
+                    // التحقق من الأصل (Origin)
+                    if (isSameOrigin(uri)) {
+                        // نفس الموقع -> افتحه داخل الويب فيو فوراً
+                        return false; 
+                    } else {
+                        // موقع خارجي -> افتحه داخل الويب فيو أيضاً (لمنع الهروب لكروم) 
+                        // إلا إذا كنت تريد منع المستخدم من الخروج من متجرك نهائياً
+                        view.loadUrl(url);
+                        return true;
                     }
                 }
-                return false;
+                
+                // منع أي محاولة هروب لأي بروتوكول آخر غير معروف
+                return true; 
             }
 
             @SuppressWarnings("deprecation")
