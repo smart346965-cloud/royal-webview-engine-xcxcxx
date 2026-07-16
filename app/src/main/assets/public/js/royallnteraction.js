@@ -146,15 +146,26 @@
     // =========================================================
     const BFCacheSanitizer = {
         init: function () {
-            // إجبار المتصفح على استعادة الصفحة من الذاكرة عند الرجوع
             window.addEventListener('pageshow', function (event) {
-                if (event.persisted) {
-                    console.log("⏪ ROYAL ENGINE: Page restored instantly from BFCache!");
-                    // إذا كان هناك سبلاش معلق، نخفيه فوراً
-                    if (window.RoyalJsBridge && typeof window.RoyalJsBridge.hideSplash === 'function') {
-                        window.RoyalJsBridge.hideSplash();
+                // إذا تم استعادة الصفحة من الرام (BFCache)
+                if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+                    console.log("⏪ ROYAL ENGINE: BFCache Zero-Latency Restore.");
+                    
+                    // إجبار الجسم على الظهور فوراً
+                    document.body.style.opacity = "1";
+                    document.body.style.visibility = "visible";
+
+                    // إبلاغ الجانب النيتف بإخفاء أي سبلاش فوراً
+                    if (window.RoyalBridge && typeof window.RoyalBridge.hideSplash === 'function') {
+                        window.RoyalBridge.hideSplash();
                     }
                 }
+            });
+            
+            // منع الوميض الأبيض عند بداية النقر على رابط (Pre-hiding)
+            window.addEventListener('beforeunload', function() {
+                // لا نخفي الصفحة، بل نجعلها ثابتة لتقليل التباين البصري
+                document.body.style.transition = "opacity 0.1s";
             });
         }
     };
