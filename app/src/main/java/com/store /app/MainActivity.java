@@ -24,6 +24,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean splashRemoved = false;
     private WebEngineManager engineManager;
     private WebView activeWebView;
+    private ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,17 +65,22 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void handleOnBackPressed() {
                 if (activeWebView != null && activeWebView.canGoBack()) {
-                    // [تعديل عبقري] قبل الرجوع، نجبر المحرك على استخدام الكاش فقط لضمان سرعة 0ms
+                    // قفل المحرك على الكاش لسرعة الضوء
                     activeWebView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                    
+                    // إيقاف أي لودر أو بروجرس بار فوراً لأن الصفحة ستظهر فوراً
+                    if (progressBar != null) {
+                        progressBar.setVisibility(View.GONE);
+                    }
                     
                     activeWebView.goBack();
                     
-                    // إعادة وضع الكاش للطبيعي بعد الرجوع بلحظة (200ms) للسماح بالتصفح العادي
+                    // إعادة الضبط بعد ثانية
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         if (activeWebView != null) {
                             activeWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
                         }
-                    }, 500);
+                    }, 1000);
                 } else {
                     // إرسال التطبيق للخلفية بدلاً من إغلاقه بالكامل للحفاظ على الويب فيو ساخناً بالذاكرة
                     moveTaskToBack(true);
@@ -101,7 +107,7 @@ public class MainActivity extends AppCompatActivity {
                 ViewGroup.LayoutParams.MATCH_PARENT));
 
         // شريط التقدم النحيف الأنيق (Progress Bar)
-        final ProgressBar progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progressBar.setMax(100);
         progressBar.setProgress(0);
         progressBar.setIndeterminate(false);
@@ -172,4 +178,4 @@ public class MainActivity extends AppCompatActivity {
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
-                    }
+    }
