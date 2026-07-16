@@ -4,6 +4,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
+import android.webkit.WebSettings;
 import android.widget.ProgressBar;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
@@ -63,7 +64,17 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void handleOnBackPressed() {
                 if (activeWebView != null && activeWebView.canGoBack()) {
-                    activeWebView.post(() -> activeWebView.goBack());
+                    // [تعديل عبقري] قبل الرجوع، نجبر المحرك على استخدام الكاش فقط لضمان سرعة 0ms
+                    activeWebView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                    
+                    activeWebView.goBack();
+                    
+                    // إعادة وضع الكاش للطبيعي بعد الرجوع بلحظة (200ms) للسماح بالتصفح العادي
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        if (activeWebView != null) {
+                            activeWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+                        }
+                    }, 500);
                 } else {
                     // إرسال التطبيق للخلفية بدلاً من إغلاقه بالكامل للحفاظ على الويب فيو ساخناً بالذاكرة
                     moveTaskToBack(true);
@@ -161,4 +172,4 @@ public class MainActivity extends AppCompatActivity {
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
-}
+                    }
