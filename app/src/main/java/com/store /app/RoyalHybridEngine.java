@@ -35,41 +35,32 @@ public final class RoyalHybridEngine {
 
         WebSettings settings = webView.getSettings();
 
-        // ==========================================
-        // 1️⃣ Process Survival (حماية العملية من القتل)
-        // ==========================================
-        // إخبار نظام أندرويد أن هذا الويب فيو "حرج جداً" ولا يجب قتله لتوفير الـ RAM
+        // 1️⃣ تعزيز أولوية الرندرة (Renderer Priority) - لمنع الوميض الناتج عن خمول المحرك
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_BOUND, true);
         }
 
-        // ==========================================
-        // 2️⃣ Rendering Discipline (الرسم المسبق)
-        // ==========================================
-        // إجبار محرك Chromium على رسم الصفحة في الذاكرة حتى لو لم تكن ظاهرة على الشاشة بالكامل
+        // 2️⃣ الرسم المسبق خارج الشاشة (Offscreen Pre-Raster) - السر الحقيقي وراء اختفاء الوميض
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             settings.setOffscreenPreRaster(true);
         }
 
-        // ==========================================
-        // 3️⃣ Chromium Native Cache (تفويض الكاش للمحرك)
-        // ==========================================
-        // تفعيل وضع الكاش الذكي الذي يفضل الذاكرة على الشبكة عند الرجوع
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT); 
+        // 3️⃣ تحسينات العرض المتقدمة (Viewport Tuning)
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
+        settings.setLoadsImagesAutomatically(true);
+        settings.setBlockNetworkImage(false);
+        
+        // 4️⃣ قفل الكاش الموحد
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
 
-        // تفعيل ميزات الكروميوم المخفية لزيادة حجم الـ Page Cache
-        try {
-            // محاولة تفعيل الحفظ المسبق للصفحات في الرام (BFCache)
-            settings.setDomStorageEnabled(true);
-            settings.setDatabaseEnabled(true);
-            
-            // إعدادات لتقليل زمن الرندرة (Rendering Latency)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                // منع الويب فيو من إعادة طلب الصفحة عند الرجوع (توفير 0ms)
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to apply advanced cache flags", e);
-        }
+        // 5️⃣ منع التخزين المؤقت للرسم القديم (Hardware Only)
+        webView.setDrawingCacheEnabled(false);
+
+        // مطابقة الخلفية فوراً للون النظام لمنع التباين
+        webView.setBackgroundColor(android.graphics.Color.parseColor("#F3F4F6"));
 
         // ==========================================
         // 5️⃣ Modern Native UX & Security (البدائل الحديثة والاحترافية)
