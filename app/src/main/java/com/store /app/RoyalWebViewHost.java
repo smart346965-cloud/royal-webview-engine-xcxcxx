@@ -65,7 +65,8 @@ public final class RoyalWebViewHost {
             jsBridgeInstance = new RoyalJsBridge(webViewInstance);
             webViewInstance.addJavascriptInterface(jsBridgeInstance, "RoyalBridge");
 
-            // تسخين الـ GPU والـ V8 بهيكل خفيف جداً
+            // [تعديل في RoyalWebViewHost.java]
+            // تأكد أن الهيكل المسخن يحتوي على نفس اللون بدقة
             String warmUpHtml = "<html><body style='background:#F3F4F6;'></body></html>";
             webViewInstance.loadDataWithBaseURL("https://kith.com/", warmUpHtml, "text/html", "UTF-8", null);
 
@@ -162,4 +163,4 @@ public final class RoyalWebViewHost {
     public static RoyalJsBridge getBridge() {
         return jsBridgeInstance;
     }
-    }
+            }
