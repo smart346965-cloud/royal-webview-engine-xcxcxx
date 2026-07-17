@@ -206,14 +206,17 @@ public class WebEngineManager {
                 }
             }
 
+            // [تعديل في WebEngineManager.java]
             @Override
             public void onPageCommitVisible(WebView view, String url) {
-                // الصفحة أصبحت جاهزة بكسلياً، الآن نخفي السبلاش ونحدث الحالة
+                // إخفاء السبلاش فوراً لأن المحرك أعلن جاهزية البكسلات
                 removeSplashSmoothly();
-                
+
+                // تأخير مزامنة لون الحالة قليلاً لترك مساحة للمعالج لرسم الصفحة
+                view.postDelayed(() -> syncStatusBarColor(view), 150);
+
                 RoyalNetworkEngine.notifyRenderStart();
                 WebEnhancer.apply(view, context);
-                syncStatusBarColor(view);
             }
 
             @Override
