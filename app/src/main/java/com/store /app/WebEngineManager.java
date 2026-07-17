@@ -124,9 +124,14 @@ public class WebEngineManager {
         });
     }
 
+    // [تعديل جراحي في WebEngineManager.java]
     private void configureSettings() {
-        webView.setBackgroundColor(Color.TRANSPARENT);
-        webView.setAlpha(0f);
+        // 1. بدلاً من TRANSPARENT، نستخدم لون السبلاش لمنع التباين البصري
+        webView.setBackgroundColor(Color.parseColor("#F3F4F6")); 
+        
+        // 2. اجعل الـ Alpha دائماً 1 لضمان بقاء السطح الرسومي نشطاً
+        webView.setAlpha(1f); 
+        
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setWillNotDraw(false);
         webView.setOverScrollMode(WebView.OVER_SCROLL_IF_CONTENT_SCROLLS);
@@ -168,16 +173,8 @@ public class WebEngineManager {
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
                 super.onPageStarted(view, url, favicon);
+                // سجل الطلب فقط، لا تلمس الـ Alpha أبداً لكي يظل آخر إطار معروضاً
                 RoyalPanopticon.recordRequestSent();
-
-                // 🛡️ استراتيجية (Anti-Flash): 
-                // إذا كان المستخدم يضغط "رجوع"، لا نلمس الـ Alpha أبداً. 
-                // نترك الصفحة الحالية معروضة حتى تكتمل رندرة الصفحة السابقة في الخلفية.
-                if (view.getSettings().getCacheMode() != WebSettings.LOAD_CACHE_ELSE_NETWORK) {
-                    // فقط في حالة التنقل الجديد "للأمام" نقوم بالإخفاء لتهيئة الرندرة
-                    // ولكننا جعلناها 0.01f بدلاً من 0 لتجنب "تعطيل" الرندرة في بعض نسخ أندرويد
-                    view.setAlpha(0.01f); 
-                }
             }
 
             @Override
@@ -211,16 +208,9 @@ public class WebEngineManager {
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
-                // 🚀 بمجرد أن تصبح الصفحة الجديدة (سواء رجوع أو أمام) جاهزة للعرض بصرياً
-                view.animate()
-                        .alpha(1f)
-                        .setDuration(150)
-                        .withStartAction(() -> {
-                            // إزالة السبلاش فوراً إذا كانت الصفحة جاهزة
-                            removeSplashSmoothly();
-                        })
-                        .start();
-
+                // الصفحة أصبحت جاهزة بكسلياً، الآن نخفي السبلاش ونحدث الحالة
+                removeSplashSmoothly();
+                
                 RoyalNetworkEngine.notifyRenderStart();
                 WebEnhancer.apply(view, context);
                 syncStatusBarColor(view);
@@ -458,4 +448,4 @@ public class WebEngineManager {
         }
         return true;
     }
-            }
+    }
