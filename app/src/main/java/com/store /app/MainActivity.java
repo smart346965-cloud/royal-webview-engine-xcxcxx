@@ -69,20 +69,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void handleOnBackPressed() {
                 if (activeWebView != null && activeWebView.canGoBack()) {
-                    // قفل المحرك على الكاش لسرعة الضوء
+                    // قفل المحرك على الكاش لضمان سرعة الاستجابة
                     activeWebView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
                     
-                    // أضف هذا السطر لضمان عدم حدوث أي "رجفة" بصرية
-                    activeWebView.setAlpha(1f); 
-                    
-                    // إيقاف أي لودر أو بروجرس بار فوراً لأن الصفحة ستظهر فوراً
-                    if (progressBar != null) {
-                        progressBar.setVisibility(View.GONE);
-                    }
+                    // إخفاء البروجرس بار لأنه لن يكون له داعٍ في الرجوع اللحظي
+                    if (progressBar != null) progressBar.setVisibility(View.GONE);
                     
                     activeWebView.goBack();
                     
-                    // إعادة الضبط بعد ثانية
+                    // إعادة الضبط للوضع الافتراضي
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         if (activeWebView != null) {
                             activeWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
@@ -167,12 +162,12 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        // 🛡️ فك الارتباط الجراحي: فصل الويب فيو بأمان تام لتجنب أخطاء تدمير الـ Buffers الرسومية
+        // 🛡️ التعديل: لا تحمل about:blank، فقط افصل الويب فيو بأمان
         if (activeWebView != null) {
-            // إيقاف الفيديوهات أو الصوتيات التي قد تعمل في الخلفية لحظة الإغلاق
-            activeWebView.loadUrl("about:blank");
+            // نكتفي بإيقاف العمليات دون مسح السطح الرسومي
+            activeWebView.stopLoading();
         }
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
-    }
+            }
