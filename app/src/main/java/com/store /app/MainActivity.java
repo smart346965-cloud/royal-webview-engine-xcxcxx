@@ -66,21 +66,18 @@ public class MainActivity extends AppCompatActivity {
 
         // 4️⃣ نظام التحكم بالرجوع المستقل نيتف (Native Back Press Handling)
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
-            // [تعديل جراحي في MainActivity.java]
             @Override
             public void handleOnBackPressed() {
                 if (activeWebView != null && activeWebView.canGoBack()) {
-                    // 1. قفل الكاش
+                    // قفل المحرك على الكاش لضمان سرعة الاستجابة
                     activeWebView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
                     
-                    // 2. أمر الرجوع
+                    // إخفاء البروجرس بار لأنه لن يكون له داعٍ في الرجوع اللحظي
+                    if (progressBar != null) progressBar.setVisibility(View.GONE);
+                    
                     activeWebView.goBack();
-
-                    // 🚀 3. الضربة القاضية للوميض: إجبار النظام على إعادة التخطيط والرسم فوراً
-                    activeWebView.requestLayout(); 
-                    activeWebView.postInvalidateOnAnimation();
-
-                    // 4. إعادة الوضع الطبيعي بعد ثانية
+                    
+                    // إعادة الضبط للوضع الافتراضي
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         if (activeWebView != null) {
                             activeWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
