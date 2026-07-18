@@ -63,7 +63,7 @@ public final class RoyalHybridEngine {
         webView.setBackgroundColor(android.graphics.Color.parseColor("#F3F4F6"));
 
         // ==========================================
-        // 5️⃣ Modern Native UX & Security (البدائل الحديثة والاحترافية)
+        // 6️⃣ Modern Native UX & Security (البدائل الحديثة والاحترافية)
         // ==========================================
         
         // 1. التثبيت البصري (Text Lock): يمنع إعدادات خط الهاتف من تخريب تصميم (CSS) المتجر
@@ -89,9 +89,14 @@ public final class RoyalHybridEngine {
         }
 
         // ==========================================
-        // 4️⃣ SPA Stability & Security (استقرار وأمان)
+        // 7️⃣ SPA Stability & Security (استقرار وأمان)
         // ==========================================
         settings.setJavaScriptEnabled(true);
+        
+        // 👑 كسر القيود الأمنية لمنع الحظر الصامت وتشغيل الـ WebAssembly المحلي بنجاح
+        settings.setAllowFileAccessFromFileURLs(true);
+        settings.setAllowUniversalAccessFromFileURLs(true);
+        
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSupportZoom(false);
         settings.setBuiltInZoomControls(false);
@@ -118,4 +123,4 @@ public final class RoyalHybridEngine {
     public static void reset() {
         isEnginePrimed = false;
     }
-}
+            }
