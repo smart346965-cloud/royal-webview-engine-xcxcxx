@@ -23,6 +23,38 @@ private:
 public:
     RoyalIgnitionCore() {
         ignition_timestamp = std::chrono::system_clock::now().time_since_epoch().count();
+        
+        // 🚨 حقن اختبار بصري ملكي: إذا عمل الـ Wasm بنجاح، سيتحول نصف الشاشة السفلي للون الأزرق فوراً!
+        EM_ASM({
+            console.log("⚡ ROYAL NUCLEUS: Visual Handshake Triggered from C++!");
+            const testDiv = document.createElement('div');
+            testDiv.id = 'royal-wasm-visual-proof';
+            testDiv.style.position = 'fixed';
+            testDiv.style.bottom = '0';
+            testDiv.style.left = '0';
+            testDiv.style.width = '100%';
+            testDiv.style.height = '50%'; // يشغل نصف الشاشة السفلي
+            testDiv.style.backgroundColor = 'rgba(0, 102, 204, 0.85)'; // أزرق ملكي شبه شفاف
+            testDiv.style.zIndex = '999999';
+            testDiv.style.pointerEvents = 'none'; // لا يعيق اللمس أو السكرول أثناء التجربة
+            testDiv.style.display = 'flex';
+            testDiv.style.justifyContent = 'center';
+            testDiv.style.alignItems = 'center';
+            testDiv.style.color = '#ffffff';
+            testDiv.style.fontFamily = 'sans-serif';
+            testDiv.style.fontWeight = 'bold';
+            testDiv.style.fontSize = '20px';
+            testDiv.innerHTML = '⚡ ROYAL NUCLEUS ACTIVE (C++)';
+            
+            // انتظر حتى يصبح جسم الصفحة جاهزاً للحقن
+            if (document.body) {
+                document.body.appendChild(testDiv);
+            } else {
+                document.addEventListener('DOMContentLoaded', () => {
+                    document.body.appendChild(testDiv);
+                });
+            }
+        });
     }
 
     /**
