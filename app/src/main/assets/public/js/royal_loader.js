@@ -70,6 +70,7 @@
         
         console.log("🚀 DIAGNOSTIC: Injecting royal_nucleus.js script tag...");
         const wasmScript = document.createElement('script');
+        wasmScript.type = 'module'; // 👑 الحل السحري لفك قفل السكربت
         wasmScript.src = 'https://royal-engine.local/public/js/royal_nucleus.js'; 
         
         wasmScript.onload = async () => {
