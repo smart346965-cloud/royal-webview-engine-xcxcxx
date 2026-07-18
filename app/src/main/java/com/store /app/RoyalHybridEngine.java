@@ -106,9 +106,6 @@ public final class RoyalHybridEngine {
         settings.setLoadsImagesAutomatically(true);
         settings.setBlockNetworkImage(false);
 
-        // 🛡️ درع الوميض الأول: إجبار الويب فيو على اللون الأبيض (أو لون متجرك) بدلاً من الشفاف الذي يسبب سواداً
-        webView.setBackgroundColor(android.graphics.Color.WHITE);
-
         // 🛍️ إعدادات التجارة الإلكترونية (E-Commerce Native Feel)
         // 1. السماح بتشغيل الفيديوهات الترويجية تلقائياً بدون تدخل المستخدم
         settings.setMediaPlaybackRequiresUserGesture(false);
