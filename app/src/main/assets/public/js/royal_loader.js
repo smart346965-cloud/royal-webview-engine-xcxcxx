@@ -1,7 +1,9 @@
 /* 👑 ROYAL NUCLEUS LOADER */
 (function() {
     const wasmScript = document.createElement('script');
-    wasmScript.src = 'file:///android_asset/royal_nucleus.js'; // المسار المطبوع
+    
+    // 🎯 التصحيح الدقيق للمسار ليتوافق مع مخرجات المطبخ السحابي الجديد
+    wasmScript.src = 'file:///android_asset/public/js/royal_nucleus.js'; 
     
     wasmScript.onload = async () => {
         try {
