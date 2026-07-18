@@ -16,7 +16,7 @@
     window.Module = {
         locateFile: function(path) {
             if (path.endsWith('.wasm')) {
-                const absoluteWasmPath = 'file:///android_asset/public/js/royal_nucleus.wasm';
+                const absoluteWasmPath = 'https://royal-engine.local/public/js/royal_nucleus.wasm';
                 console.log("📂 DIAGNOSTIC: Emscripten requested .wasm file. Forcing path to:", absoluteWasmPath);
                 return absoluteWasmPath;
             }
@@ -32,7 +32,7 @@
 
     // 3. محاولة قحص وحجم ملف الـ WASM يدوياً قبل تشغيل السكربت (هل هو فارغ؟ هل الـ Interceptor يعمل؟)
     async function verifyWasmFileIntegrity() {
-        const targetUrl = 'file:///android_asset/public/js/royal_nucleus.wasm';
+        const targetUrl = 'https://royal-engine.local/public/js/royal_nucleus.wasm';
         try {
             console.log("📡 DIAGNOSTIC: Fetching WASM binary file directly to check integrity...");
             const response = await fetch(targetUrl);
@@ -70,7 +70,7 @@
         
         console.log("🚀 DIAGNOSTIC: Injecting royal_nucleus.js script tag...");
         const wasmScript = document.createElement('script');
-        wasmScript.src = 'file:///android_asset/public/js/royal_nucleus.js'; 
+        wasmScript.src = 'https://royal-engine.local/public/js/royal_nucleus.js'; 
         
         wasmScript.onload = async () => {
             console.log("✅ DIAGNOSTIC: royal_nucleus.js loaded successfully. Testing global bindings...");
