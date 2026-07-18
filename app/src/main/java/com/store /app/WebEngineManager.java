@@ -182,14 +182,13 @@ public class WebEngineManager {
                 // 👁️ [Panopticon Telemetry] اكتمال عملية التحميل والرندرة الهيكلية
                 RoyalPanopticon.recordNavigationComplete();
 
-                // 1. حقن المحرك
-                WebEnhancer.apply(view, context);
-                
-                // 2. 👑 ربط الجسر الملكي لإخفاء السبلاش فور وصول الإشارة
-                // تعديل احترافي: نمرر كائن الـ Bridge المجهز بالـ Callback مباشرة للـ JavascriptInterface
+                // 👑 ربط الجسر الملكي أولاً وقبل كل شيء لكي يستمع للـ Loader
                 RoyalJsBridge bridge = new RoyalJsBridge(view);
                 bridge.setOnHideSplashCallback(WebEngineManager.this::removeSplashSmoothly);
                 view.addJavascriptInterface(bridge, "RoyalBridge");
+
+                // 🎯 الطريقة الاحترافية: الحقن الذري الموحد يتم هنا فقط لمنع التضارب البصري
+                WebEnhancer.apply(view, context);
                 
                 RoyalNetworkEngine.notifyRenderIdle();
 
@@ -210,9 +209,9 @@ public class WebEngineManager {
             public void onPageCommitVisible(WebView view, String url) {
                 // الصفحة أصبحت جاهزة بكسلياً، الآن نخفي السبلاش ونحدث الحالة
                 removeSplashSmoothly();
-                
                 RoyalNetworkEngine.notifyRenderStart();
-                WebEnhancer.apply(view, context);
+                
+                // ❌ تم حذف سطر WebEnhancer.apply من هنا لمنع تشويه كاش الـ RAM وإعادة تصفير الـ Wasm
                 syncStatusBarColor(view);
             }
 
@@ -448,4 +447,4 @@ public class WebEngineManager {
         }
         return true;
     }
-    }
+            }
