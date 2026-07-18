@@ -1,0 +1,31 @@
+name: Compile Royal Nucleus to WASM
+
+on:
+  push:
+    branches: [ main, master ] # سيعمل التثبيت فوراً عند رفع الكود على فرع main أو master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Install Emscripten SDK
+      uses: mymindstorm/setup-emsdk@v12
+      with:
+        version: 'latest'
+
+    - name: Compile Core Engine
+      run: |
+        # هنا نخبر السيرفر بالدخول لمجلد الملف وطبخه بأعلى دقة
+        emcc -O3 -std=c++17 nexus_core/royal_nucleus.cpp -o nexus_core/royal_nucleus.js --bind
+
+    - name: Upload Finished Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: royal-nucleus-packages
+        path: |
+          nexus_core/royal_nucleus.js
+          nexus_core/royal_nucleus.wasm
+
