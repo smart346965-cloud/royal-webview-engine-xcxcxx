@@ -22,8 +22,11 @@ jobs:
       - name: Cook The Nucleus (Wasm Compilation) 🍳
         run: |
           mkdir -p dist/js
+          # 🚀 التعديل الجراحي هنا: إزالة ES6 وإضافة بيئة الويب واسم دالة الإقلاع
           emcc nexus_core/royal_nucleus.cpp -o dist/js/royal_nucleus.js \
-            -O3 --bind -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 \
+            -O3 --bind -s WASM=1 -s MODULARIZE=1 \
+            -s EXPORT_NAME="'createRoyalNucleusModule'" \
+            -s ENVIRONMENT=web \
             -s ALLOW_MEMORY_GROWTH=1 -s MALLOC='emmalloc' --closure 0
 
       - name: Upload Finished Artifacts (WASM & JS) 👑
