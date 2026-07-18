@@ -1,30 +1,36 @@
-name: Compile Nexus Core
+name: Royal Core Factory (WASM Only) 👑
 
 on:
+  workflow_dispatch: # 👑 لتفعيل زر البناء اليدوي داخل جيت هاب
   push:
-    branches: [ main, master ] # سيعمل تلقائياً عند رفع الكود لـ جيتهاب
+    branches: [ main, master ] # 🚀 يعمل تلقائياً بمجرد رفع التعديلات
+    paths:
+      - 'nexus_core/**' 
 
 jobs:
-  build_wasm:
+  build_wasm: # 🧠 تم مطابقة الاسم الموضح في صورتك تماماً
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout Repository
-      uses: actions/checkout@v3
+      - name: Checkout Code 📂
+        uses: actions/checkout@v4
 
-    - name: Setup Emscripten Toolchain
-      uses: mymindstorm/setup-emsdk@v12
-      with:
-        version: 'latest'
+      - name: Install Emscripten ⚙️
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y emscripten
+          
+      - name: Cook The Nucleus (Wasm Compilation) 🍳
+        run: |
+          mkdir -p dist/js
+          emcc nexus_core/royal_nucleus.cpp -o dist/js/royal_nucleus.js \
+            -O3 --bind -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 \
+            -s ALLOW_MEMORY_GROWTH=1 -s MALLOC='emmalloc' --closure 0
 
-    - name: Bake Royal Nucleus Core
-      run: |
-        # الأمر مجهز بمسار ملفك الدقيق للطبخ الفوري
-        emcc -O3 -std=c++17 nexus_core/royal_nucleus.cpp -o nexus_core/royal_nucleus.js --bind
-
-    - name: Archive Finished Production Files
-      uses: actions/upload-artifact@v3
-      with:
-        name: nexus-core-outputs
-        path: |
-          nexus_core/royal_nucleus.js
-          nexus_core/royal_nucleus.wasm
+      - name: Upload Finished Artifacts (WASM & JS) 👑
+        uses: actions/upload-artifact@v4 # 🔥 التحديث الحاسم لـ v4 لمنع الخطأ تماماً
+        with:
+          name: Royal-Nucleus-Core-Outputs
+          path: |
+            dist/js/royal_nucleus.js
+            dist/js/royal_nucleus.wasm
+          retention-days: 7
