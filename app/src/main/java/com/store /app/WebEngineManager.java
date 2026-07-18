@@ -179,17 +179,37 @@ public class WebEngineManager {
 
             @Override
             public void onPageFinished(WebView view, String url) {
-                // 👁️ [Panopticon Telemetry] اكتمال عملية التحميل والرندرة الهيكلية
                 RoyalPanopticon.recordNavigationComplete();
 
-                // 👑 ربط الجسر الملكي أولاً وقبل كل شيء لكي يستمع للـ Loader
+                // 1. ربط الجسر الملكي
                 RoyalJsBridge bridge = new RoyalJsBridge(view);
                 bridge.setOnHideSplashCallback(WebEngineManager.this::removeSplashSmoothly);
                 view.addJavascriptInterface(bridge, "RoyalBridge");
 
-                // 🎯 الطريقة الاحترافية: الحقن الذري الموحد يتم هنا فقط لمنع التضارب البصري
+                // 2. 👑 [الحقن الذري] قراءة وحقن ملف الـ JS والـ WASM مباشرة كـ String لتخطي حظر الـ Local Resource
+                try {
+                    // قراءة كود الـ JS من الـ Assets وتحويله لنص
+                    java.io.InputStream is = context.getAssets().open("public/js/royal_nucleus.js");
+                    int size = is.available();
+                    byte[] buffer = new byte[size];
+                    is.read(buffer);
+                    is.close();
+                    String jsCode = new String(buffer, "UTF-8");
+
+                    // حقن الكود مباشرة في الـ WebView ليتم تنفيذه فوراً داخل الـ V8
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                        view.evaluateJavascript(jsCode, null);
+                        // تشغيل اللودر المباشر بعد حقن النواة
+                        view.evaluateJavascript("console.log('⚡ ROYAL NUCLEUS: Injected Directly via RAM Injection V2');", null);
+                    } else {
+                        view.loadUrl("javascript:" + jsCode);
+                    }
+                } catch (Exception e) {
+                    android.util.Log.e("RoyalEngine", "❌ Failed to inject Royal Nucleus JS via RAM", e);
+                }
+
+                // تطبيق المحسن البصري
                 WebEnhancer.apply(view, context);
-                
                 RoyalNetworkEngine.notifyRenderIdle();
 
                 if (WebViewFeature.isFeatureSupported(WebViewFeature.VISUAL_STATE_CALLBACK)) {
@@ -466,4 +486,4 @@ public class WebEngineManager {
         }
         return true;
     }
-            }
+                    }
