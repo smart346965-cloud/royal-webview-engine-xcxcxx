@@ -98,6 +98,12 @@ jobs:
             **/*.apk
             **/*.aab
 
+      - name: Archive Built Royal Assets 👑
+        uses: actions/upload-artifact@v4
+        with:
+          name: Royal-Wasm-Assets-Verification
+          path: app/src/main/assets/public/js/
+
       - name: Notify Nexus Worker with Real Data 🔔
         if: success()
         run: |
