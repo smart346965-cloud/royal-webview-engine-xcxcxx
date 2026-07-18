@@ -25,7 +25,8 @@ jobs:
           # 🚀 التعديل الجراحي هنا: إزالة ES6 وإضافة بيئة الويب واسم دالة الإقلاع
           emcc nexus_core/royal_nucleus.cpp -o dist/js/royal_nucleus.js \
             -O3 --bind -s WASM=1 -s MODULARIZE=1 \
-            -s EXPORT_NAME="'createRoyalNucleusModule'" \
+            -s EXPORT_NAME="createRoyalNucleusModule" \
+            -s "EXPORTED_RUNTIME_METHODS=['ccall','cwrap']" \
             -s ENVIRONMENT=web \
             -s ALLOW_MEMORY_GROWTH=1 -s MALLOC='emmalloc' --closure 0
 
