@@ -259,6 +259,24 @@ public class WebEngineManager {
                 if (request == null || request.getUrl() == null) return null;
                 String url = request.getUrl().toString();
 
+                // 👑 [تصحيح أمني حاسم] حسم ملف الـ WASM المحلي وإرجاعه بـ MIME Type المعتمد عالمياً لقهر الحظر الصامت
+                if (url.endsWith("/royal_nucleus.wasm")) {
+                    try {
+                        java.io.InputStream wasmStream = context.getAssets().open("public/js/royal_nucleus.wasm");
+                        java.util.Map<String, String> headers = new java.util.HashMap<>();
+                        headers.put("Content-Type", "application/wasm"); // فرض هوية الملف الثنائي
+                        headers.put("Access-Control-Allow-Origin", "*"); // كسر قيود الـ CORS محلياً
+                        
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            return new WebResourceResponse("application/wasm", null, 200, "OK", headers, wasmStream);
+                        } else {
+                            return new WebResourceResponse("application/wasm", null, wasmStream);
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.e("RoyalEngine", "❌ FATAL: Failed to serve local WASM Core!", e);
+                    }
+                }
+
                 if (url.endsWith("/nexus-service-worker.js")) {
                     try {
                         java.io.InputStream swStream = context.getAssets().open("public/js/nexus-service-worker.js");
@@ -281,7 +299,8 @@ public class WebEngineManager {
                     return new WebResourceResponse("text/html", "UTF-8", null);
                 }
 
-                boolean isCoreResource = request.isForMainFrame() || url.contains(".js") || url.contains(".css");
+                // 👑 [تعديل الأولوية القصوى] إدراج الـ .wasm كعنصر نواة فوري لرفع أولوية المعالجة في العتاد
+                boolean isCoreResource = request.isForMainFrame() || url.contains(".js") || url.contains(".css") || url.contains(".wasm");
                 if (isCoreResource) {
                     android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_FOREGROUND);
                 }
