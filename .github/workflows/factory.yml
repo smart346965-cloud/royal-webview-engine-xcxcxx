@@ -14,21 +14,6 @@ jobs:
       - name: Checkout Code 📂
         uses: actions/checkout@v4
 
-      - name: Install Emscripten ⚙️
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y emscripten
-          
-      - name: Cook The Nucleus (Wasm Compilation) 🍳
-        run: |
-          # إنشاء مجلد المخرجات لضمان التنظيم
-          mkdir -p dist/js
-          
-          # طبخ النواة بسرعتها الصاروخية مع تفعيل الخصائص المتقدمة التي وضعتها في مصنعك
-          emcc nexus_core/royal_nucleus.cpp -o dist/js/royal_nucleus.js \
-            -O3 --bind -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 \
-            -s ALLOW_MEMORY_GROWTH=1 -s MALLOC='emmalloc' --closure 0
-
       - name: Upload Finished Artifacts (WASM & JS) 📦
         uses: actions/upload-artifact@v4
         with:
