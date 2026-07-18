@@ -67,32 +67,31 @@
     // 4. إطلاق عملية التحميل وتتبع الجسر
     async function coreIgnition() {
         const wasmValid = await verifyWasmFileIntegrity();
-        
+        if (!wasmValid) return;
+
         console.log("🚀 DIAGNOSTIC: Injecting royal_nucleus.js script tag...");
         const wasmScript = document.createElement('script');
-        wasmScript.type = 'module'; // 👑 الحل السحري لفك قفل السكربت
+        // ❌ حذفنا wasmScript.type = 'module' لفك قفل السكربت
         wasmScript.src = 'https://royal-engine.local/public/js/royal_nucleus.js'; 
         
         wasmScript.onload = async () => {
-            console.log("✅ DIAGNOSTIC: royal_nucleus.js loaded successfully. Testing global bindings...");
+            console.log("✅ DIAGNOSTIC: royal_nucleus.js loaded successfully.");
             
-            if (typeof createRoyalNucleusModule !== "function") {
-                console.error("❌ DIAGNOSTIC CRITICAL: 'createRoyalNucleusModule' function is missing! The JS glue code is compiled incorrectly or scope-locked.");
+            // 🛡️ فحص ذكي: هل الدالة في النطاق العالمي أم محبوسة؟
+            const starter = window.createRoyalNucleusModule || createRoyalNucleusModule;
+
+            if (typeof starter !== "function") {
+                console.error("❌ DIAGNOSTIC CRITICAL: 'createRoyalNucleusModule' is still hidden! Check global scope.");
                 return;
             }
 
             try {
-                console.log("⚙️ DIAGNOSTIC: Invoking createRoyalNucleusModule()...");
-                const module = await createRoyalNucleusModule(window.Module);
-                console.log("📦 DIAGNOSTIC: Module compilation finished. Checking exported C++ Classes...");
+                console.log("⚙️ DIAGNOSTIC: Invoking Nucleus Module...");
+                // نمرر window.Module الذي يحتوي على locateFile
+                const module = await starter(window.Module); 
+                
+                console.log("📦 DIAGNOSTIC: Module compilation finished. Classes:", Object.keys(module).filter(k => k.startsWith('Royal')));
 
-                if (!module.RoyalIgnitionCore || !module.RoyalCoreEngine || !module.RoyalNetworkCore) {
-                    console.error("❌ DIAGNOSTIC CRITICAL: C++ Classes are missing from exports! Check your Embind (EMSCRIPTEN_BINDINGS) in C++.");
-                    console.log("Exposed keys in module:", Object.keys(module));
-                    return;
-                }
-
-                console.log("⚡ DIAGNOSTIC: Standard structures verified. Fusing with V8...");
                 window.Nexus = {
                     Ignition: new module.RoyalIgnitionCore(),
                     Core: new module.RoyalCoreEngine(),
@@ -100,16 +99,11 @@
                 };
                 
                 window.Nexus.Ignition.perform_socket_priming(window.location.origin);
-                console.log("🏆 DIAGNOSTIC SUCCESS: ENGINE FULLY FUSED. If the blue box doesn't appear, the issue is inside the C++ drawing logic itself!");
+                console.log("🏆 DIAGNOSTIC SUCCESS: ENGINE FULLY FUSED.");
             } catch (err) {
-                console.error("❌ DIAGNOSTIC CRITICAL: Crash during createRoyalNucleusModule execution:", err);
+                console.error("❌ DIAGNOSTIC CRITICAL: Execution Crash:", err);
             }
         };
-
-        wasmScript.onerror = (e) => {
-            console.error("❌ DIAGNOSTIC CRITICAL: Failed to load royal_nucleus.js script tag!", e);
-        };
-
         document.head.appendChild(wasmScript);
     }
 
