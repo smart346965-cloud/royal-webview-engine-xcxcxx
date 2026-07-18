@@ -29,7 +29,7 @@ jobs:
           mkdir -p app/src/main/assets
           emcc nexus_core/royal_nucleus.cpp -o app/src/main/assets/royal_nucleus.js \
             -O3 --bind -s WASM=1 -s MODULARIZE=1 -s EXPORT_ES6=1 \
-            -s ALLOW_MEMORY_GROWTH=1 -s MALLOC='emmalloc' --closure 1
+            -s ALLOW_MEMORY_GROWTH=1 -s MALLOC='emmalloc' --closure 0
 
       - name: Prepare Keystore 👑
         run: |
