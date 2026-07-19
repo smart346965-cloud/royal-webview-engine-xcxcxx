@@ -32,21 +32,28 @@
                 }
             });
 
-            // 3. ربط النطاق العالمي (Global Fusion)
+            // 👑 3. إيقاظ المايسترو (المركز القيادي الموحد لنواة C++)
+            const maestro = new module.RoyalNucleus();
+
+            // 4. ربط النطاق العالمي (Global Fusion)
             window.Nexus = {
+                Maestro: maestro, // تسجيل المايسترو في النطاق العالمي
                 Ignition: new module.RoyalIgnitionCore(),
                 Core: new module.RoyalCoreEngine(),
                 Network: new module.RoyalNetworkCore()
             };
 
-            // 4. تشغيل التسخين الفوري
+            // 5. تشغيل التسخين الفوري
             window.Nexus.Ignition.perform_socket_priming(window.location.origin);
 
-            // 👑 1. بناء الجسر الدماغي (RoyalWasm) لكي تتعرف عليه ملفات الـ JS
+            // 👑 6. بناء الجسر الدماغي (RoyalWasm) لكي تتعرف عليه المستشعرات
             window.RoyalWasm = {
-                core: window.Nexus.Core,         // محرك التنبؤ والرياضيات
-                intel: new module.RoyalIntelPrediction(), // محرك النوايا والـ Speculation
-                guardian: new module.RoyalNetworkGuardian() // محرك الكاش
+                core: window.Nexus.Core,
+                
+                // الاستدعاء العبقري: نأخذ المحركات من المايسترو مباشرة عبر دوال الجلب 
+                // بدلاً من إنشاء نسخ جديدة تشتت الذاكرة!
+                intel: maestro.getPredictor(),  
+                guardian: maestro.getGuardian() 
             };
 
             // 👑 2. إيقاظ المستشعرات بعد ضمان اكتمال عقل الـ C++ بنسبة 100%
