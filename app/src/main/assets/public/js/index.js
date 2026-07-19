@@ -38,18 +38,18 @@ const RoyalEngine = (function () {
 
     // 👑 خريطة المحركات (The Master Roster): هنا نحدد ترتيب وأولوية كل ملف في مشروعك!
     const SystemModules = {
-        // ⚡ المرحلة 1: العضلات الحرجة (تعمل فوراً لضمان استجابة النقر والشكل البصري)
+        // ⚡ المرحلة 1: العضلات الحرجة 
         DOM_READY:[
             'RoyalChameleon',   // 1. تلوين شريط الهاتف فوراً
-            'RoyalInteraction', // 2. تفعيل النقر اللحظي والسكرول
-            'NexusUIEngine'     // 3. تجهيز واجهات الإشعارات (Bar & Sheet)
+            // ❌ تم حذف 'RoyalInteraction' من هنا لنقله للودر
+            'NexusUIEngine'     // 2. تجهيز واجهات الإشعارات (Bar & Sheet)
         ],
-        // 🧘‍♂️ المرحلة 2: العضلات الثقيلة (تعمل في وقت الفراغ لحماية المعالج)
+        // 🧘‍♂️ المرحلة 2: العضلات الثقيلة 
         IDLE:[
-            'RoyalSpeculator',   // 1. التنبؤ بالصفحات القادمة
-            'NexusTracker',      // 2. تتبع سلوك المستخدم (السلة والاهتمام)
-            'NexusCapabilities', // 3. تجهيز عتاد الهاتف (GPS, Camera)
-            'RoyalOneSignal'     // 4. تهيئة الإشعارات الخارجية
+            // ❌ تم حذف 'RoyalSpeculator' من هنا لنقله للودر
+            'NexusTracker',      // 1. تتبع سلوك المستخدم (السلة والاهتمام)
+            'NexusCapabilities', // 2. تجهيز عتاد الهاتف (GPS, Camera)
+            'RoyalOneSignal'     // 3. تهيئة الإشعارات الخارجية
         ]
     };
 
