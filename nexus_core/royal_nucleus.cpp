@@ -358,12 +358,19 @@ private:
     RoyalNetworkGuardian* guardian_ptr;
 
 public:
+    // [تعديل جراحي في المايسترو - Maestro Fusion]
     RoyalNucleus() {
         predictor_ptr = new RoyalIntelPrediction();
         guardian_ptr = new RoyalNetworkGuardian();
         
+        // 🚀 تفعيل الميزات الشرسة فور إقلاع النواة
+        guardian_ptr->enforce_async_visuals();
+        guardian_ptr->trigger_bytecode_opt();
+        
+        // 🌪️ محاكة خيط التركيب: نقل عبء الحسابات إلى الذاكرة الخطية للـ Wasm
         EM_ASM({
-            console.log("👑 ROYAL NUCLEUS: Maestro fused with Intel & Guardian. Power: 100%");
+            console.log("👑 ROYAL NUCLEUS: Maestro fused with Intel & Guardian.");
+            console.log("🌪️ Compositor Simulation: ACTIVE.");
         });
     }
 
