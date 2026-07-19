@@ -3,6 +3,7 @@ package com.store.app;
 import android.app.Activity;
 import android.content.Context;
 import android.content.MutableContextWrapper;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Looper;
 import android.util.Log;
@@ -64,6 +65,11 @@ public final class RoyalWebViewHost {
             
             jsBridgeInstance = new RoyalJsBridge(webViewInstance);
             webViewInstance.addJavascriptInterface(jsBridgeInstance, "RoyalBridge");
+
+            // [داخل RoyalWebViewHost.java]
+            webViewInstance.setBackgroundColor(Color.parseColor("#F3F4F6")); // نفس لون السبلاش بدقة
+            // إخفاء الويب فيو برمجياً وليس عبر الـ Alpha (للحفاظ على كفاءة الـ GPU)
+            webViewInstance.setVisibility(View.VISIBLE);
 
             // [تعديل في RoyalWebViewHost.java]
             // تأكد أن الهيكل المسخن يحتوي على نفس اللون بدقة
