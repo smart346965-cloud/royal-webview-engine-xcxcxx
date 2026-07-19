@@ -14,10 +14,11 @@ using namespace emscripten;
  */
 class RoyalNetworkGuardian {
 private:
+    // [تعديلات شرسة في royal_network_guardian.cpp]
     struct CacheRule {
         long long ttl;
-        int priority; // 1: High, 2: Normal, 3: Background
-        bool force_binary_trust;
+        bool stubborn_mode; // true: يتجاهل أوامر السيرفر بالحذف
+        bool code_caching;  // تفعيل V8 Bytecode
     };
 
     std::unordered_map<std::string, CacheRule> registry;
@@ -32,11 +33,11 @@ public:
     RoyalNetworkGuardian() {
         session_start_time = std::chrono::system_clock::now().time_since_epoch().count();
         
-        // 🧪 تلقيم القواعد الأساسية (Seed Rules) لضمان السيادة الفورية
-        registry[".js"]   = { 21600000, 1, true };  // 6 ساعات - ثقة مطلقة
-        registry[".css"]  = { 21600000, 1, true };
-        registry[".woff2"] = { 2592000000, 1, true }; // شهر كامل للخطوط
-        registry["html"]  = { 300000, 2, false };    // 5 دقائق للصفحات الهيكلية
+        // 🧪 تلقيم القواعد "المتمردة" (Kiwi Style)
+        registry[".js"]    = { 604800000, true, true };  // أسبوع كامل - تجاهل السيرفر - كاش Bytecode
+        registry[".css"]   = { 604800000, true, false };
+        registry[".woff2"] = { 2592000000, true, false };
+        registry["html"]   = { 300000, false, false };    // 5 دقائق للصفحات الهيكلية
     }
 
     /**
@@ -55,11 +56,8 @@ public:
         size_t dot_pos = url.find_last_of('.');
         if (dot_pos != std::string::npos) {
             std::string ext = url.substr(dot_pos);
-            if (registry.count(ext)) {
-                CacheRule rule = registry[ext];
-                if (rule.force_binary_trust) {
-                    return val("BINARY_TRUST_CACHE"); // الثقة العمياء
-                }
+            if (registry.count(ext) && registry[ext].stubborn_mode) {
+                return val("FORCE_STUBBORN_CACHE");
             }
         }
 
@@ -137,6 +135,57 @@ public:
             });
         });
     }
+
+    /**
+     * 🌐 تقنية "القناة الساخنة" (Socket Persistency Commander)
+     * يمنع السيرفر من إغلاق الاتصال ويقوم بتسخين الـ DNS مسبقاً
+     */
+    void maintain_hot_socket(const std::string& domain) {
+        EM_ASM_({
+            const url = UTF8ToString($0);
+            // حقن رابط تسخين صامت (Preconnect) لمنع ضياع وقت المصافحة (Handshake)
+            const link = document.createElement('link');
+            link.rel = 'preconnect';
+            link.href = url;
+            link.crossOrigin = 'anonymous';
+            document.head.appendChild(link);
+            
+            // إرسال نبضة دورية (Keep-alive pulse)
+            fetch(url, { mode: 'no-cors', cache: 'no-store', priority: 'low' });
+            console.log("🌐 NUCLEUS: Socket held HOT for " + url);
+        }, domain.c_str());
+    }
+
+    /**
+     * 🧠 محرك السيادة على الكاش (The Stubborn Cache Decision)
+     * يخبر الجافا: "استخدم هذا الملف حتى لو قال السيرفر لا تستخدمه"
+     */
+    val get_stubborn_strategy(std::string url) {
+        fast_lower(url);
+        size_t dot_pos = url.find_last_of('.');
+        if (dot_pos != std::string::npos) {
+            std::string ext = url.substr(dot_pos);
+            if (registry.count(ext) && registry[ext].stubborn_mode) {
+                return val("FORCE_STUBBORN_CACHE"); 
+            }
+        }
+        return val("DEFAULT_STRATEGY");
+    }
+
+    /**
+     * ⚡ تفعيل أرشفة الـ Bytecode (V8 Persistence Engine)
+     */
+    void force_bytecode_persistence() {
+        EM_ASM({
+            // إجبار الكروميوم على اعتبار كل السكربتات "مؤهلة للكاش الثنائي"
+            if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'SAVE_BYTECODE_STRICT',
+                    force: true
+                });
+            }
+        });
+    }
 };
 
 EMSCRIPTEN_BINDINGS(royal_guardian_module) {
@@ -147,5 +196,8 @@ EMSCRIPTEN_BINDINGS(royal_guardian_module) {
         .function("should_throttle_network", &RoyalNetworkGuardian::should_throttle_network)
         .function("is_critical_asset", &RoyalNetworkGuardian::is_critical_asset)
         .function("enforce_async_visuals", &RoyalNetworkGuardian::enforce_async_visuals)
-        .function("trigger_bytecode_opt", &RoyalNetworkGuardian::trigger_bytecode_opt);
+        .function("trigger_bytecode_opt", &RoyalNetworkGuardian::trigger_bytecode_opt)
+        .function("maintain_hot_socket", &RoyalNetworkGuardian::maintain_hot_socket)
+        .function("get_stubborn_strategy", &RoyalNetworkGuardian::get_stubborn_strategy)
+        .function("force_bytecode_persistence", &RoyalNetworkGuardian::force_bytecode_persistence);
     }
