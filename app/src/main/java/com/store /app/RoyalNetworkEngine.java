@@ -35,10 +35,6 @@ public final class RoyalNetworkEngine {
             1, 2, 20L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(50) // حد أقصى لطابور الانتظار لمنع تضخم الذاكرة
     );
 
-    private static final Pattern SEQUENCE_PATTERN = Pattern.compile("^(.*[_-])(\\d+)(\\.[a-zA-Z0-9]+.*)$");
-    private static final Pattern PRODUCT_PATTERN = Pattern.compile(".*/(product|item|p|detail)/.*", Pattern.CASE_INSENSITIVE);
-    private static final Pattern PAGE_PATTERN = Pattern.compile(".*(page=|/page/)(\\d+).*", Pattern.CASE_INSENSITIVE);
-
     private static long lastPrefetchTime = 0;
     private static volatile boolean renderBusy = false;
     private static boolean allowPrefetch = true;
@@ -66,64 +62,18 @@ public final class RoyalNetworkEngine {
     }
 
     public static WebResourceResponse interceptRequest(WebResourceRequest request) {
-        // خط الدفاع الأول والمستقر: الكاش المعزول
+        // خط الدفاع الأول: الكاش (الذي أصبح يستخدم FNV-1a الآن)
         WebResourceResponse cached = RoyalCacheManager.intercept(request);
         if (cached != null) return cached;
 
         if (request == null || request.getUrl() == null) return null;
-        String url = request.getUrl().toString();
-
+        
+        // إشعار النواة بالخمول عند وجود لمسة (تنسيق مع Predictor)
         if (request.hasGesture()) {
             notifyRenderIdle();
         }
 
-        if (!"GET".equalsIgnoreCase(request.getMethod())) return null;
-
-        // 🛡️ التعديل الجراحي (حارس البوابة): 
-        // لن نقوم بتشغيل الـ Regex (التحليلات التنبؤية) على كل صورة صغيرة أو ملف CSS!
-        // سنشغلها فقط على مسارات الصفحات الرئيسية (Main Frame)
-        if (request.isForMainFrame()) {
-            analyzePagePrediction(url);
-        } else if (!isLowEndDevice && isLikelyCacheable(url) && isImageResource(url)) {
-            // تخفيف الحمل: لا نتوقع تسلسل الصور إلا إذا كان الجهاز قوياً
-            analyzeAndPredict(url);
-        }
-
-        return null; // سيادة المعالجة والتحميل تظل للكروميوم بأمان
-    }
-
-    private static void analyzeAndPredict(String currentUrl) {
-        Matcher matcher = SEQUENCE_PATTERN.matcher(currentUrl);
-        if (matcher.matches()) {
-            String prefix = matcher.group(1);
-            String numberStr = matcher.group(2);
-            String suffix = matcher.group(3);
-
-            try {
-                int currentNumber = Integer.parseInt(numberStr);
-                String nextNumberStr = String.format("%0" + numberStr.length() + "d", currentNumber + 1);
-                String predictedUrl = prefix + nextNumberStr + suffix;
-
-                scheduleWarmup(predictedUrl, false);
-            } catch (NumberFormatException ignored) {}
-        }
-    }
-
-    private static void analyzePagePrediction(String url) {
-        try {
-            if (PRODUCT_PATTERN.matcher(url).matches()) return;
-
-            Matcher pageMatcher = PAGE_PATTERN.matcher(url);
-            if (pageMatcher.matches()) {
-                String pageNumberStr = pageMatcher.group(2);
-                if (pageNumberStr != null && !pageNumberStr.isEmpty()) {
-                    int next = Integer.parseInt(pageNumberStr) + 1;
-                    String predicted = url.replace(pageNumberStr, String.valueOf(next));
-
-                    scheduleWarmup(predicted, true);
-                }
-            }
-        } catch (Exception ignored) {}
+        return null; // ترك الباقي للكروميوم المدعوم بـ Wasm
     }
 
     private static boolean isLikelyCacheable(String url) {
@@ -386,4 +336,4 @@ public final class RoyalNetworkEngine {
             });
         } catch (Exception ignored) {}
     }
-                        }
+                }
