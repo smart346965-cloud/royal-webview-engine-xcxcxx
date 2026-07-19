@@ -353,24 +353,27 @@ public:
 // 🏛️ THE MAESTRO: ROYAL NUCLEUS (The Commander Core)
 // =========================================================
 class RoyalNucleus {
-public:
-    RoyalIntelPrediction* predictor;
-    RoyalNetworkGuardian* guardian;
+private:
+    RoyalIntelPrediction* predictor_ptr;
+    RoyalNetworkGuardian* guardian_ptr;
 
+public:
     RoyalNucleus() {
-        // تخصيص الذاكرة للمحركات الفرعية فور استيقاظ المايسترو
-        predictor = new RoyalIntelPrediction();
-        guardian = new RoyalNetworkGuardian();
+        predictor_ptr = new RoyalIntelPrediction();
+        guardian_ptr = new RoyalNetworkGuardian();
         
         EM_ASM({
             console.log("👑 ROYAL NUCLEUS: Maestro fused with Intel & Guardian. Power: 100%");
         });
     }
 
-    // 🧹 تأمين الذاكرة (Production Grade)
+    // دوال الجلب الصريحة (Explicit Getters)
+    RoyalIntelPrediction* getPredictor() const { return predictor_ptr; }
+    RoyalNetworkGuardian* getGuardian() const { return guardian_ptr; }
+
     ~RoyalNucleus() {
-        delete predictor;
-        delete guardian;
+        delete predictor_ptr;
+        delete guardian_ptr;
     }
 };
 
@@ -403,9 +406,9 @@ EMSCRIPTEN_BINDINGS(royal_nucleus_module) {
         .function("resolve_resource_ttl", &RoyalNetworkCore::resolve_resource_ttl)
         .function("resolve_mime_type", &RoyalNetworkCore::resolve_mime_type);
 
-    // 🌉 [جسر العمالقة]: فتح وصول الجافاسكريبت للمايسترو ومحركاته الفرعية
+    // 🌉 [جسر العمالقة]: ربط دوال الوصول للمايسترو بمحركاته الفرعية
     class_<RoyalNucleus>("RoyalNucleus")
         .constructor()
-        .property("Predictor", &RoyalNucleus::predictor, allow_raw_pointers())
-        .property("Guardian", &RoyalNucleus::guardian, allow_raw_pointers());
+        .function("getPredictor", &RoyalNucleus::getPredictor, allow_raw_pointers())
+        .function("getGuardian", &RoyalNucleus::getGuardian, allow_raw_pointers());
 }
