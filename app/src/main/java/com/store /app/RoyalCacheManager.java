@@ -119,7 +119,7 @@ public final class RoyalCacheManager {
 
             maybeEvict();
 
-            String key = md5(url);
+            String key = generateAtomicKey(url);
 
             // ⚡ L1 RAM
             byte[] mem = memoryCache.get(key);
@@ -231,7 +231,7 @@ public final class RoyalCacheManager {
 
             maybeEvict();
 
-            String key = md5(url);
+            String key = generateAtomicKey(url);
 
             // 🔒 atomic lock
             if (!writingNow.add(key)) return;
@@ -315,7 +315,7 @@ public final class RoyalCacheManager {
     }
 
     public static Map<String, String> getValidationHeaders(String url) {
-        String key = md5(url);
+        String key = generateAtomicKey(url);
         CacheMeta meta = loadMeta(key);
 
         if (meta == null) return null;
@@ -336,55 +336,15 @@ public final class RoyalCacheManager {
     // ==========================================
 
     private static boolean isCacheable(String url) {
-
         String clean = url.split("\\?")[0].toLowerCase();
-
-        // APIs
-        if (clean.contains("/api/")) return false;
-        if (clean.contains("graphql")) return false;
-        if (clean.contains("/wp-json/")) return false;
-        if (clean.contains("/rest/")) return false;
-
-        // Authentication
-        if (clean.contains("login")) return false;
-        if (clean.contains("logout")) return false;
-        if (clean.contains("signin")) return false;
-        if (clean.contains("signup")) return false;
-        if (clean.contains("register")) return false;
-        if (clean.contains("auth")) return false;
-        if (clean.contains("oauth")) return false;
-
-        // User Data
-        if (clean.contains("/account")) return false;
-        if (clean.contains("/profile")) return false;
-        if (clean.contains("/user")) return false;
-        if (clean.contains("/customer")) return false;
-        if (clean.contains("/dashboard")) return false;
-
-        // Commerce
-        if (clean.contains("/cart")) return false;
-        if (clean.contains("/checkout")) return false;
-        if (clean.contains("/payment")) return false;
-        if (clean.contains("/order")) return false;
-        if (clean.contains("/invoice")) return false;
-
-        // HTML - 👑 مسموح الآن للـ HTML بالمرور للقضاء على التجمد
-        if (clean.endsWith(".php") || clean.endsWith(".jsp") || clean.endsWith(".asp") || clean.endsWith(".aspx")) return false;
-
-        for (String e : EXT) {
-            if (clean.endsWith(e)) {
-                return true;
-            }
-        }
+        // استثناءات قانونية ثابتة
+        if (clean.contains("/api/") || clean.contains("login") || clean.contains("checkout")) return false;
         
-        // 👑 ذكاء اصطياد روابط المتاجر: 
-        // المتاجر الحديثة (مثل site.com/product/123) ليس لها امتداد في النهاية.
-        // إذا لم يكن الرابط يحتوي على امتداد ملف، فهو غالباً صفحة HTML هيكلية، سنسمح بتخزينها!
-        if (!clean.matches(".*\\.[a-z0-9]{2,5}$")) {
-            return true; 
+        for (String e : EXT) {
+            if (clean.endsWith(e)) return true;
         }
-
-        return false;
+        // صفحات المتاجر الهيكلية
+        return !clean.matches(".*\\.[a-z0-9]{2,5}$");
     }
 
     private static long resolveTTL(String url) {
@@ -512,6 +472,18 @@ public final class RoyalCacheManager {
     // 🔧 UTILS
     // ==========================================
 
+    // [تعديل جراحي في RoyalCacheManager.java]
+    // هذه الدالة هي النسخة الجاوية من كود الـ C++ في Guardian
+    private static String generateAtomicKey(String input) {
+        long hash = 0x811c9dc5L; // نفس الـ Offset الأساسي في C++
+        for (int i = 0; i < input.length(); i++) {
+            hash ^= input.charAt(i);
+            hash *= 0x01000193L; // نفس الـ Prime الثنائي
+            hash &= 0xffffffffL; // ضمان البقاء في نطاق 32 بت
+        }
+        return Long.toHexString(hash);
+    }
+
     private static String getMime(String url) {
         String clean = url.toLowerCase().split("\\?")[0];
 
@@ -558,7 +530,7 @@ public final class RoyalCacheManager {
 
     // 👑 تحديث وقت انتهاء الصلاحية فقط عند استلام 304 Not Modified
     public static void updateValidationMeta(String url, Map<String, List<String>> newHeaders) {
-        String key = md5(url);
+        String key = generateAtomicKey(url);
         CacheMeta oldMeta = loadMeta(key);
         
         if (oldMeta != null) {
@@ -668,4 +640,4 @@ public final class RoyalCacheManager {
             Log.e(TAG, "Royal Download Manager failed", e);
         }
     }
-        }
+                    }
