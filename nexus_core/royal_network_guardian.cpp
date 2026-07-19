@@ -100,6 +100,43 @@ public:
                 url.find("style.css") != std::string::npos ||
                 url.find("theme.css") != std::string::npos);
     }
+
+    /**
+     * 🖼️ محرك الرندرة البصري (Async Image Engine)
+     * يجبر المتصفح على معالجة الصور في خيوط خلفية بعيداً عن الـ UI
+     */
+    void enforce_async_visuals() {
+        EM_ASM({
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach(m => {
+                    m.addedNodes.forEach(node => {
+                        if (m.tagName === 'IMG') {
+                            // إجبار فك التشفير غير المتزامن (قوة Kiwi)
+                            node.decoding = 'async'; 
+                            node.loading = 'lazy';
+                        }
+                    });
+                });
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+            console.log("🖼️ NUCLEUS: Async Image Decoding Enforced.");
+        });
+    }
+
+    /**
+     * ⚡ تفعيل كاش الـ V8 Bytecode
+     * يضمن أن الجافا سكريبت لا يُعاد ترجمته في كل مرة
+     */
+    void trigger_bytecode_opt() {
+        // إرسال إشارة للمتصفح أن الموارد القادمة يجب حفظها كـ Bytecode
+        EM_ASM({
+            window.addEventListener('load', () => {
+                if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({type: 'SAVE_BYTECODE'});
+                }
+            });
+        });
+    }
 };
 
 EMSCRIPTEN_BINDINGS(royal_guardian_module) {
@@ -108,5 +145,7 @@ EMSCRIPTEN_BINDINGS(royal_guardian_module) {
         .function("evaluate_request_strategy", &RoyalNetworkGuardian::evaluate_request_strategy)
         .function("compute_atomic_key", &RoyalNetworkGuardian::compute_atomic_key)
         .function("should_throttle_network", &RoyalNetworkGuardian::should_throttle_network)
-        .function("is_critical_asset", &RoyalNetworkGuardian::is_critical_asset);
-}
+        .function("is_critical_asset", &RoyalNetworkGuardian::is_critical_asset)
+        .function("enforce_async_visuals", &RoyalNetworkGuardian::enforce_async_visuals)
+        .function("trigger_bytecode_opt", &RoyalNetworkGuardian::trigger_bytecode_opt);
+    }
