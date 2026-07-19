@@ -12,6 +12,10 @@
 
 using namespace emscripten;
 
+// 👑 [التحام النواة]: صهر محركات التنبؤ والحماية في كتلة ثنائية واحدة
+#include "royal_intel_prediction.cpp"
+#include "royal_network_guardian.cpp"
+
 // =========================================================
 // 🚀 ROYAL IGNITION CORE (ملف royal_ignition_core.cpp)
 // =========================================================
@@ -346,6 +350,31 @@ public:
 };
 
 // =========================================================
+// 🏛️ THE MAESTRO: ROYAL NUCLEUS (The Commander Core)
+// =========================================================
+class RoyalNucleus {
+public:
+    RoyalIntelPrediction* predictor;
+    RoyalNetworkGuardian* guardian;
+
+    RoyalNucleus() {
+        // تخصيص الذاكرة للمحركات الفرعية فور استيقاظ المايسترو
+        predictor = new RoyalIntelPrediction();
+        guardian = new RoyalNetworkGuardian();
+        
+        EM_ASM({
+            console.log("👑 ROYAL NUCLEUS: Maestro fused with Intel & Guardian. Power: 100%");
+        });
+    }
+
+    // 🧹 تأمين الذاكرة (Production Grade)
+    ~RoyalNucleus() {
+        delete predictor;
+        delete guardian;
+    }
+};
+
+// =========================================================
 // 🌉 EMSCRIPTEN BINDINGS (دمج جميع Bindings في Nucleus واحد)
 // =========================================================
 EMSCRIPTEN_BINDINGS(royal_nucleus_module) {
@@ -373,4 +402,10 @@ EMSCRIPTEN_BINDINGS(royal_nucleus_module) {
         .function("is_url_cacheable", &RoyalNetworkCore::is_url_cacheable)
         .function("resolve_resource_ttl", &RoyalNetworkCore::resolve_resource_ttl)
         .function("resolve_mime_type", &RoyalNetworkCore::resolve_mime_type);
+
+    // 🌉 [جسر العمالقة]: فتح وصول الجافاسكريبت للمايسترو ومحركاته الفرعية
+    class_<RoyalNucleus>("RoyalNucleus")
+        .constructor()
+        .property("Predictor", &RoyalNucleus::predictor, allow_raw_pointers())
+        .property("Guardian", &RoyalNucleus::guardian, allow_raw_pointers());
 }
