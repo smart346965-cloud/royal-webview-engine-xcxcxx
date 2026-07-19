@@ -41,6 +41,25 @@
 
             // 4. تشغيل التسخين الفوري
             window.Nexus.Ignition.perform_socket_priming(window.location.origin);
+
+            // 👑 1. بناء الجسر الدماغي (RoyalWasm) لكي تتعرف عليه ملفات الـ JS
+            window.RoyalWasm = {
+                core: window.Nexus.Core,         // محرك التنبؤ والرياضيات
+                intel: new module.RoyalIntelPrediction(), // محرك النوايا والـ Speculation
+                guardian: new module.RoyalNetworkGuardian() // محرك الكاش
+            };
+
+            // 👑 2. إيقاظ المستشعرات بعد ضمان اكتمال عقل الـ C++ بنسبة 100%
+            if (window.RoyalInteraction && typeof window.RoyalInteraction.init === 'function') {
+                window.RoyalInteraction.init();
+            }
+            
+            // 👑 3. إيقاظ التنبؤ بذكاء لحماية المعالج (في وقت الفراغ)
+            if (window.RoyalSpeculator && typeof window.RoyalSpeculator.init === 'function') {
+                const requestIdle = window.requestIdleCallback || function (cb) { setTimeout(cb, 100); };
+                requestIdle(() => window.RoyalSpeculator.init());
+            }
+
             console.log("🚀 NUCLEUS ACTIVE: Zero-Latency Fusion Complete.");
 
         } catch (err) {
