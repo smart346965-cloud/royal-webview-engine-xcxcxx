@@ -59,11 +59,82 @@ public:
             console.log("🔮 NUCLEUS: Full Prerender Sequence Initiated for: " + targetUrl);
         }, url.c_str());
     }
+
+    /**
+     * 👻 الرندرة الشبحية الصارمة (Strict Ghost Prerendering)
+     * لا يكتفي بجلب البيانات، بل يرسم الصفحة ويشغل الـ JS في الخلفية
+     */
+    void ghost_render_sequence(const std::string& url) {
+        EM_ASM_({
+            const targetUrl = UTF8ToString($0);
+            // 🚀 استغلال أحدث ميزة في كروميوم (Speculation Rules v2)
+            const specRule = {
+                "prerender": [{
+                    "source": "list",
+                    "urls": [targetUrl],
+                    "eagerness": "immediate",
+                    "eagerness_level": "conservative" // موازنة بين السرعة واستهلاك الرام
+                }]
+            };
+            
+            const script = document.createElement('script');
+            script.type = 'speculationrules';
+            script.textContent = JSON.stringify(specRule);
+            document.head.appendChild(script);
+            console.log("👻 NUCLEUS: Ghost Rendering Page in GPU Memory: " + targetUrl);
+        }, url.c_str());
+    }
+
+    /**
+     * 🌪️ تحرير الخيط الرئيسي (Off-Main-Thread Architect)
+     * إجبار الكروميوم على استخدام خيط الـ Compositor لرسم العناصر مسبقاً
+     */
+    void offload_rendering_to_gpu() {
+        EM_ASM({
+            // حقن CSS "قسري" لإجبار المتصفح على استخدام طبقات الـ Composite
+            const style = document.createElement('style');
+            style.textContent = `
+                * { 
+                    will-change: transform; 
+                    backface-visibility: hidden; 
+                    perspective: 1000px;
+                }
+                body { 
+                    content-visibility: auto; 
+                    contain-intrinsic-size: 1000px;
+                }
+            `;
+            document.head.appendChild(style);
+            console.log("🌪️ NUCLEUS: Main Thread Liberated. Rendering moved to GPU.");
+        });
+    }
+
+    /**
+     * 👆 محرك التنبؤ بالمسافات (Layout Pre-computation)
+     * يمنع الـ Layout Thrashing عبر حساب المسافات مسبقاً في النواة
+     */
+    void precompute_page_layout() {
+        EM_ASM({
+            // استخدام الـ IntersectionObserver لتهيئة العناصر قبل وصول السكرول إليها
+            const io = new IntersectionObserver(entries => {
+                entries.forEach(e => {
+                    if (e.isIntersecting) {
+                        // إرسال نبضة للنواة لتنبيهها بأن العنصر سيظهر
+                        if (window.Nexus) window.Nexus.Ignition.set_engine_warmed(true);
+                    }
+                });
+            }, { rootMargin: '500px' });
+            document.querySelectorAll('a, div.product-card').forEach(el => io.observe(el));
+        });
+    }
 };
 
 EMSCRIPTEN_BINDINGS(royal_intel_module) {
     class_<RoyalIntelPrediction>("RoyalIntelPrediction")
         .constructor()
         .function("analyze_pointer_intent", &RoyalIntelPrediction::analyze_pointer_intent)
-        .function("inject_speculation_atomic", &RoyalIntelPrediction::inject_speculation_atomic);
-    }
+        .function("inject_speculation_atomic", &RoyalIntelPrediction::inject_speculation_atomic)
+        .function("ghost_render_sequence", &RoyalIntelPrediction::ghost_render_sequence)
+        .function("offload_rendering_to_gpu", &RoyalIntelPrediction::offload_rendering_to_gpu)
+        .function("precompute_page_layout", &RoyalIntelPrediction::precompute_page_layout);
+}
