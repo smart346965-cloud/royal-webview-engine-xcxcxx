@@ -195,10 +195,17 @@ public class WebEngineManager {
 
             @Override
             public void onPageCommitVisible(WebView view, String url) {
-                // 🚀 حقن المحرك الملكي في أول أجزاء من الثانية (Atomic Injection)
-                WebEnhancer.apply(view, context);
-
-                removeSplashSmoothly();
+                // 🚀 اللحظة الحاسمة: الكروميوم أتم عملية الرسم (Painting)
+                // لا نخفي السبلاش فوراً هنا، بل نرسل نبضة للجافا للتأكد من انقضاء الوقت الأدنى
+                if (activity != null) {
+                    activity.runOnUiThread(() -> {
+                        // تنفيذ الحقن الذري للنواة
+                        WebEnhancer.apply(view, context);
+                        
+                        // إبلاغ المدير أن البكسلات جاهزة خلف الستار
+                        triggerFinalReveal();
+                    });
+                }
                 RoyalNetworkEngine.notifyRenderStart();
                 syncStatusBarColor(view);
             }
@@ -391,6 +398,18 @@ public class WebEngineManager {
         });
     }
 
+    // أضف هذه الدالة داخل WebEngineManager لإدارة الظهور المنسق
+    public void triggerFinalReveal() {
+        long currentTime = System.currentTimeMillis();
+        long elapsed = currentTime - splashStartTime;
+        long remaining = Math.max(0, 2500 - elapsed);
+
+        // [السر الهندسي]: انتظار الوقت الأدنى + الجاهزية البصرية
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            removeSplashSmoothly();
+        }, remaining);
+    }
+
     private void syncStatusBarColor(WebView view) {
         if (activity == null || activity.isFinishing()) return;
 
@@ -472,4 +491,4 @@ public class WebEngineManager {
         }
         return true;
     }
-            }
+                }
