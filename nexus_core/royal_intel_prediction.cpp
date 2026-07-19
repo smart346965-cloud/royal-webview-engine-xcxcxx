@@ -40,22 +40,23 @@ public:
      * 🔮 محرك حقن قواعد التكهن (Speculation Rules Injector)
      * يولد كود JS فائق القوة ليخبر الكروميوم بالصفحات التي يجب رسمها مسبقاً
      */
+    // [تعديل جراحي: ترقية النواة للرندرة المسبقة الشاملة]
     void inject_speculation_atomic(const std::string& url) {
         EM_ASM_({
-            const url = UTF8ToString($0);
-            if (!document.querySelector('script[type="speculationrules"]')) {
-                const specScript = document.createElement('script');
-                specScript.type = 'speculationrules';
-                specScript.textContent = JSON.stringify({
-                    "prerender": [{
-                        "source": "list",
-                        "urls": [url],
-                        "score": 0.9 // أولوية قصوى للنواة
-                    }]
-                });
-                document.head.appendChild(specScript);
-                console.log("🚀 NUCLEUS: Atomic Speculation Injected for URL: " + url);
-            }
+            const targetUrl = UTF8ToString($0);
+            // 🚀 تقنية Speculation Rules API: تفعيل الرندرة الكاملة (DOM + JS + Paint) في الخلفية
+            const specScript = document.createElement('script');
+            specScript.type = 'speculationrules';
+            specScript.textContent = JSON.stringify({
+                "prerender": [{
+                    "source": "list",
+                    "urls": [targetUrl],
+                    "score": 1.0,
+                    "eagerness": "immediate" // تنفيذ فوري بأمر من النواة
+                }]
+            });
+            document.head.appendChild(specScript);
+            console.log("🔮 NUCLEUS: Full Prerender Sequence Initiated for: " + targetUrl);
         }, url.c_str());
     }
 };
@@ -65,4 +66,4 @@ EMSCRIPTEN_BINDINGS(royal_intel_module) {
         .constructor()
         .function("analyze_pointer_intent", &RoyalIntelPrediction::analyze_pointer_intent)
         .function("inject_speculation_atomic", &RoyalIntelPrediction::inject_speculation_atomic);
-}
+    }
