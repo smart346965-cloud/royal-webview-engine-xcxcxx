@@ -124,14 +124,15 @@ public class WebEngineManager {
         });
     }
 
-    // [تعديل جراحي في WebEngineManager.java]
+    // [تعديل جراحي مطور بالكامل لـ WebEngineManager.java]
     private void configureSettings() {
-        // 1. بدلاً من TRANSPARENT، نستخدم لون السبلاش لمنع التباين البصري
+        // 1. استخدام لون السبلاش لمنع التباين والوميض البصري الأبيض
         webView.setBackgroundColor(Color.parseColor("#F3F4F6")); 
         
-        // 2. اجعل الـ Alpha دائماً 1 لضمان بقاء السطح الرسومي نشطاً
+        // 2. إبقاء السطح الرسومي نشطاً باستمرار لسرعة الاستجابة
         webView.setAlpha(1f); 
         
+        // 🚀 القوة القصوى: تفعيل معالجة الرسم عبر العتاد (Hardware Acceleration)
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setWillNotDraw(false);
         webView.setOverScrollMode(WebView.OVER_SCROLL_IF_CONTENT_SCROLLS);
@@ -145,11 +146,19 @@ public class WebEngineManager {
         // 👑 فتح قواعد البيانات التخزينية العميقة (ضروري للـ Service Worker والـ IndexedDB)
         settings.setDatabaseEnabled(true);
         
+        // 👑 إجبار الكروميوم على استخدام كاش الـ V8 بشكل مكثف وإلزامية التخزين الافتراضي
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        
+        // ⚡ [إضافة جراحية]: تعطيل الفحص الخارجي الآمن لتسريع زمن الاتصال (سرعة Kiwi)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            settings.setSafeBrowsingEnabled(false);
+        }
+        
         // 👑 السماح بالوصول للملفات لتتمكن نواة كروم من كتابة الـ Bytecode محلياً
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
         
-        // 👑 السماح للموارد المحلية بالاتصال ببعضها (مهم جداً لتخطي قيود الـ CORS داخل الكاش)
+        // 👑 السماح للموارد المحلية بالاتصال ببعضها لتخطي قيود الـ CORS داخل الكاش
         settings.setAllowFileAccessFromFileURLs(true);
         settings.setAllowUniversalAccessFromFileURLs(true);
 
