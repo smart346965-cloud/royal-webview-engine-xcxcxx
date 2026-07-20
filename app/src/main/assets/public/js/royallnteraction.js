@@ -57,25 +57,31 @@
                 }
             }, { passive: true });
 
+            // [تعديل جراحي في royallnteraction.js]
             document.addEventListener("touchmove", (e) => {
                 if (isScrolling || e.touches.length === 0 || !activeLink) return;
                 
+                // 🧠 القفل المنطقي: بمجرد أن نتأكد أن المستخدم يسحب، نتوقف عن سؤال الـ C++ تماماً
+                // هذا يحرر الخيط الرئيسي فوراً لمعالجة الرسم
                 const currentX = e.touches[0].clientX;
                 const currentY = e.touches[0].clientY;
 
-                // 🧠 رمي حسابات فيثاغورس (Slop Detection) لمحرك الـ C++
                 if (window.RoyalWasm && window.RoyalWasm.core) {
+                    // نرسل الحسابات للنواة مرة واحدة فقط لتأكيد نية السكرول
                     isScrolling = window.RoyalWasm.core.detect_scroll_slop(startX, startY, currentX, currentY);
                 } else {
-                    // Fallback مؤقت في حال تأخر تحميل الـ Wasm
-                    isScrolling = Math.abs(currentX - startX) > 12 || Math.abs(currentY - startY) > 12;
+                    isScrolling = Math.abs(currentX - startX) > 10 || Math.abs(currentY - startY) > 10;
                 }
 
                 if (isScrolling) {
-                    activeLink.classList.remove('royal-tap-active');
-                    activeLink = null;
+                    // 🚀 فور تأكيد السكرول، نطبق "كلاس السيولة" ونحرر الرابط
+                    requestAnimationFrame(() => {
+                        document.body.classList.add("royal-is-scrolling");
+                        if (activeLink) activeLink.classList.remove('royal-tap-active');
+                        activeLink = null;
+                    });
                 }
-            }, { passive: true });
+            }, { passive: true }); // passive ضرورية جداً هنا لضمان سلاسة المتصفح الأصلي
 
             document.addEventListener("touchend", (e) => {
                 if (isScrolling || !activeLink) {
@@ -107,4 +113,3 @@
 
     window.RoyalInteraction = { init: startRoyalInteraction };
 })();
-
