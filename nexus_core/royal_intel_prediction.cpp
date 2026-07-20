@@ -42,9 +42,9 @@ public:
      */
     // [تعديل جراحي: ترقية النواة للرندرة المسبقة الشاملة]
     void inject_speculation_atomic(const std::string& url) {
-        EM_ASM_({
+        // 🚨 إضافة ( قوس إضافي هنا لحماية الفواصل
+        EM_ASM_((
             const targetUrl = UTF8ToString($0);
-            // 🚀 تقنية Speculation Rules API: تفعيل الرندرة الكاملة (DOM + JS + Paint) في الخلفية
             const specScript = document.createElement('script');
             specScript.type = 'speculationrules';
             specScript.textContent = JSON.stringify({
@@ -52,12 +52,12 @@ public:
                     "source": "list",
                     "urls": [targetUrl],
                     "score": 1.0,
-                    "eagerness": "immediate" // تنفيذ فوري بأمر من النواة
+                    "eagerness": "immediate"
                 }]
             });
             document.head.appendChild(specScript);
             console.log("🔮 NUCLEUS: Full Prerender Sequence Initiated for: " + targetUrl);
-        }, url.c_str());
+        ), url.c_str()); // 🚨 إغلاق القوس ) هنا
     }
 
     /**
@@ -65,15 +65,15 @@ public:
      * لا يكتفي بجلب البيانات، بل يرسم الصفحة ويشغل الـ JS في الخلفية
      */
     void ghost_render_sequence(const std::string& url) {
-        EM_ASM_({
+        // 🚨 إضافة ( قوس إضافي هنا
+        EM_ASM_((
             const targetUrl = UTF8ToString($0);
-            // 🚀 استغلال أحدث ميزة في كروميوم (Speculation Rules v2)
             const specRule = {
                 "prerender": [{
                     "source": "list",
                     "urls": [targetUrl],
                     "eagerness": "immediate",
-                    "eagerness_level": "conservative" // موازنة بين السرعة واستهلاك الرام
+                    "eagerness_level": "conservative"
                 }]
             };
             
@@ -82,7 +82,7 @@ public:
             script.textContent = JSON.stringify(specRule);
             document.head.appendChild(script);
             console.log("👻 NUCLEUS: Ghost Rendering Page in GPU Memory: " + targetUrl);
-        }, url.c_str());
+        ), url.c_str()); // 🚨 إغلاق القوس ) هنا
     }
 
     /**
@@ -135,10 +135,9 @@ public:
     void predict_back_step(const std::string& previous_url) {
         if (previous_url.empty()) return;
 
-        EM_ASM_({
+        // 🚨 إضافة ( قوس إضافي هنا
+        EM_ASM_((
             const url = UTF8ToString($0);
-            // 🚀 تقنية Speculation Rules v2 للرجوع اللحظي
-            // نأمر الكروميوم بفتح الصفحة السابقة في "رندرة صامتة"
             const spec = {
                 "prerender": [{
                     "source": "list",
@@ -152,7 +151,7 @@ public:
             script.textContent = JSON.stringify(spec);
             document.head.appendChild(script);
             console.log("🔄 NUCLEUS: Back-Step Prerendered in GPU memory: " + url);
-        }, previous_url.c_str());
+        ), previous_url.c_str()); // 🚨 إغلاق القوس ) هنا
     }
 
     /**
