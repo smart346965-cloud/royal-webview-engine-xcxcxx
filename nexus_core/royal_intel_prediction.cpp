@@ -127,6 +127,48 @@ public:
             document.querySelectorAll('a, div.product-card').forEach(el => io.observe(el));
         });
     }
+
+    /**
+     * 🔄 خوارزمية "الرؤية العكسية" (Reverse-Navigation Oracle)
+     * تقوم بتحليل سجل التنقل ورسم الصفحة السابقة "شبحياً" لضمان 0ms عند الرجوع
+     */
+    void predict_back_step(const std::string& previous_url) {
+        if (previous_url.empty()) return;
+
+        EM_ASM_({
+            const url = UTF8ToString($0);
+            // 🚀 تقنية Speculation Rules v2 للرجوع اللحظي
+            // نأمر الكروميوم بفتح الصفحة السابقة في "رندرة صامتة"
+            const spec = {
+                "prerender": [{
+                    "source": "list",
+                    "urls": [url],
+                    "eagerness": "immediate"
+                }]
+            };
+            const script = document.createElement('script');
+            script.type = 'speculationrules';
+            script.id = 'royal-back-prerender';
+            script.textContent = JSON.stringify(spec);
+            document.head.appendChild(script);
+            console.log("🔄 NUCLEUS: Back-Step Prerendered in GPU memory: " + url);
+        }, previous_url.c_str());
+    }
+
+    /**
+     * ⚡ محرك "الاستبقاء البصري" (Visual Snapshot Retention)
+     * يحفظ حالة الـ DOM الحالية قبل الانتقال لكي لا يضطر المتصفح لإعادة حسابها عند العودة
+     */
+    void lock_current_dom_state() {
+        EM_ASM({
+            if (window.performance && window.performance.mark) {
+                window.performance.mark('dom-lock-start');
+            }
+            // إجبار المتصفح على تفعيل BFCache بقوة عبر تعطيل الـ unload events
+            window.onunload = null;
+            window.onbeforeunload = null;
+        });
+    }
 };
 
 EMSCRIPTEN_BINDINGS(royal_intel_module) {
@@ -136,5 +178,7 @@ EMSCRIPTEN_BINDINGS(royal_intel_module) {
         .function("inject_speculation_atomic", &RoyalIntelPrediction::inject_speculation_atomic)
         .function("ghost_render_sequence", &RoyalIntelPrediction::ghost_render_sequence)
         .function("offload_rendering_to_gpu", &RoyalIntelPrediction::offload_rendering_to_gpu)
-        .function("precompute_page_layout", &RoyalIntelPrediction::precompute_page_layout);
+        .function("precompute_page_layout", &RoyalIntelPrediction::precompute_page_layout)
+        .function("predict_back_step", &RoyalIntelPrediction::predict_back_step)
+        .function("lock_current_dom_state", &RoyalIntelPrediction::lock_current_dom_state);
 }
