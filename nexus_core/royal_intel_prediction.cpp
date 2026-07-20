@@ -40,9 +40,7 @@ public:
      * 🔮 محرك حقن قواعد التكهن (Speculation Rules Injector)
      * يولد كود JS فائق القوة ليخبر الكروميوم بالصفحات التي يجب رسمها مسبقاً
      */
-    // [تعديل جراحي: ترقية النواة للرندرة المسبقة الشاملة]
     void inject_speculation_atomic(const std::string& url) {
-        // 🚨 إضافة ( قوس إضافي هنا لحماية الفواصل
         EM_ASM_((
             const targetUrl = UTF8ToString($0);
             const specScript = document.createElement('script');
@@ -57,7 +55,7 @@ public:
             });
             document.head.appendChild(specScript);
             console.log("🔮 NUCLEUS: Full Prerender Sequence Initiated for: " + targetUrl);
-        ), url.c_str()); // 🚨 إغلاق القوس ) هنا
+        ), url.c_str());
     }
 
     /**
@@ -65,7 +63,6 @@ public:
      * لا يكتفي بجلب البيانات، بل يرسم الصفحة ويشغل الـ JS في الخلفية
      */
     void ghost_render_sequence(const std::string& url) {
-        // 🚨 إضافة ( قوس إضافي هنا
         EM_ASM_((
             const targetUrl = UTF8ToString($0);
             const specRule = {
@@ -82,16 +79,15 @@ public:
             script.textContent = JSON.stringify(specRule);
             document.head.appendChild(script);
             console.log("👻 NUCLEUS: Ghost Rendering Page in GPU Memory: " + targetUrl);
-        ), url.c_str()); // 🚨 إغلاق القوس ) هنا
+        ), url.c_str());
     }
 
     /**
      * 🌪️ تحرير الخيط الرئيسي (Off-Main-Thread Architect)
      * إجبار الكروميوم على استخدام خيط الـ Compositor لرسم العناصر مسبقاً
      */
-    // [تعديل جراحي في royal_intel_prediction.cpp]
     void offload_rendering_to_gpu() {
-        EM_ASM({
+        EM_ASM(({
             if (document.getElementById('royal-gpu-booster')) return;
             const style = document.createElement('style');
             style.id = 'royal-gpu-booster';
@@ -118,7 +114,7 @@ public:
             `;
             document.head.appendChild(style);
             console.log("🌪️ NUCLEUS: GPU Rasterization Optimized & Layers Isolated.");
-        });
+        }));
     }
 
     /**
@@ -126,7 +122,7 @@ public:
      * يمنع الـ Layout Thrashing عبر حساب المسافات مسبقاً في النواة
      */
     void precompute_page_layout() {
-        EM_ASM({
+        EM_ASM(({
             // استخدام الـ IntersectionObserver لتهيئة العناصر قبل وصول السكرول إليها
             const io = new IntersectionObserver(entries => {
                 entries.forEach(e => {
@@ -137,7 +133,7 @@ public:
                 });
             }, { rootMargin: '500px' });
             document.querySelectorAll('a, div.product-card').forEach(el => io.observe(el));
-        });
+        }));
     }
 
     /**
@@ -147,7 +143,6 @@ public:
     void predict_back_step(const std::string& previous_url) {
         if (previous_url.empty()) return;
 
-        // 🚨 إضافة ( قوس إضافي هنا
         EM_ASM_((
             const url = UTF8ToString($0);
             const spec = {
@@ -163,7 +158,7 @@ public:
             script.textContent = JSON.stringify(spec);
             document.head.appendChild(script);
             console.log("🔄 NUCLEUS: Back-Step Prerendered in GPU memory: " + url);
-        ), previous_url.c_str()); // 🚨 إغلاق القوس ) هنا
+        ), previous_url.c_str());
     }
 
     /**
@@ -171,14 +166,14 @@ public:
      * يحفظ حالة الـ DOM الحالية قبل الانتقال لكي لا يضطر المتصفح لإعادة حسابها عند العودة
      */
     void lock_current_dom_state() {
-        EM_ASM({
+        EM_ASM(({
             if (window.performance && window.performance.mark) {
                 window.performance.mark('dom-lock-start');
             }
             // إجبار المتصفح على تفعيل BFCache بقوة عبر تعطيل الـ unload events
             window.onunload = null;
             window.onbeforeunload = null;
-        });
+        }));
     }
 };
 
