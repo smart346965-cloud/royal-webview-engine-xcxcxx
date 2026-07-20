@@ -148,6 +148,16 @@ public class WebEngineManager {
             webView.setVerticalScrollbarThumbDrawable(null); // تخفيف عبء الرسم
         }
 
+        // [إضافة جراحية في WebEngineManager.java]
+
+        // 1. منع النتعة الناتجة عن تمدد الشاشة (Stretch Effect) في الأندرويد الحديث
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+
+        // 2. ضمان أن الـ Hardware Layer يعمل في "خيط منفصل" (هذا سطر ذهبي)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            webView.setForceDarkAllowed(false); // منع المعالجة اللونية الثقيلة أثناء الرسم
+        }
+
         // بقية الإعدادات السابقة...
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -500,4 +510,4 @@ public class WebEngineManager {
         }
         return true;
     }
-            }
+                }
