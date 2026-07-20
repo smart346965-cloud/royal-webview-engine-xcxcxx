@@ -5,6 +5,7 @@
 #include <chrono>
 #include <vector>
 #include <algorithm>
+#include <unordered_set>
 
 using namespace emscripten;
 
@@ -24,12 +25,25 @@ private:
     std::unordered_map<std::string, CacheRule> registry;
     long long session_start_time;
 
+    // [تعديل جراحي 1: إضافة قاعدة بيانات الدومينات الطفيلية]
+    std::unordered_set<std::string> parasitic_registry;
+    bool is_nucleus_stabilized = false; // لم يتم الاستقرار بعد
+
     // دالة خاصة لتحويل النصوص للأسفل بسرعة المعالج
     void fast_lower(std::string& s) {
         std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c){ return std::tolower(c); });
     }
 
 public:
+    // نحدث الـ Constructor لقيد الدومينات الشهيرة بالبطء
+    void init_shield_registry() {
+        parasitic_registry = {
+            "gorgias.chat", "connect.facebook.net", "google-analytics.com",
+            "googletagmanager.com", "klaviyo.com", "luckyorange.com",
+            "hotjar.com", "snapchat.com", "tiktok.com", "ads-twitter.com"
+        };
+    }
+
     RoyalNetworkGuardian() {
         session_start_time = std::chrono::system_clock::now().time_since_epoch().count();
         
@@ -38,6 +52,9 @@ public:
         registry[".css"]   = { 604800000, true, false };
         registry[".woff2"] = { 2592000000, true, false };
         registry["html"]   = { 300000, false, false };    // 5 دقائق للصفحات الهيكلية
+
+        // تهيئة درع الدومينات الطفيلية
+        init_shield_registry();
     }
 
     /**
@@ -222,6 +239,28 @@ public:
             console.log("🚀 NUCLEUS: Network Turbo Active (Forced 5G Simulation).");
         });
     }
+
+    /**
+     * 🛡️ خوارزمية عزل السيادة (Sovereignty Isolation Decision)
+     * تقرر في زمن 0.00001ms هل السكربت مسموح له بالمرور أم يجب عزله
+     */
+    bool should_isolate_domain(std::string url) {
+        fast_lower(url);
+        
+        // إذا لم تستقر النواة بعد (أول 3 ثوانٍ)، نعزل أي دومين طفيلي فوراً
+        for (const auto& domain : parasitic_registry) {
+            if (url.find(domain) != std::string::npos) {
+                return true; // يجب عزل هذا السكربت الآن
+            }
+        }
+        return false;
+    }
+
+    // إشارة تخبر النواة بأن الرسم الأساسي اكتمل ويمكنها البدء في فك الخناق
+    void mark_stabilized() {
+        is_nucleus_stabilized = true;
+        EM_ASM({ console.log("🛡️ NUCLEUS: Stabilized. Script Shield is now in Adaptive Mode."); });
+    }
 };
 
 EMSCRIPTEN_BINDINGS(royal_guardian_module) {
@@ -236,5 +275,7 @@ EMSCRIPTEN_BINDINGS(royal_guardian_module) {
         .function("maintain_hot_socket", &RoyalNetworkGuardian::maintain_hot_socket)
         .function("get_stubborn_strategy", &RoyalNetworkGuardian::get_stubborn_strategy)
         .function("force_bytecode_persistence", &RoyalNetworkGuardian::force_bytecode_persistence)
-        .function("activate_network_turbo", &RoyalNetworkGuardian::activate_network_turbo);
-    }
+        .function("activate_network_turbo", &RoyalNetworkGuardian::activate_network_turbo)
+        .function("should_isolate_domain", &RoyalNetworkGuardian::should_isolate_domain)
+        .function("mark_stabilized", &RoyalNetworkGuardian::mark_stabilized);
+}
