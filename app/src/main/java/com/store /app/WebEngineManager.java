@@ -124,22 +124,31 @@ public class WebEngineManager {
         });
     }
 
-    // [تعديل جراحي مطور بالكامل لـ WebEngineManager.java]
+    // [تعديل جراحي في WebEngineManager.java]
     private void configureSettings() {
-        // 1. استخدام لون السبلاش لمنع التباين والوميض البصري الأبيض
-        webView.setBackgroundColor(Color.parseColor("#F3F4F6")); 
-        
-        // 2. إبقاء السطح الرسومي نشطاً باستمرار لسرعة الاستجابة
-        webView.setAlpha(1f); 
-        
-        // 🚀 القوة القصوى: تفعيل معالجة الرسم عبر العتاد (Hardware Acceleration)
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        webView.setWillNotDraw(false);
-        webView.setOverScrollMode(WebView.OVER_SCROLL_IF_CONTENT_SCROLLS);
-        webView.setHorizontalScrollBarEnabled(false);
-        webView.setVerticalScrollBarEnabled(false);
-
         WebSettings settings = webView.getSettings();
+
+        // 1. تفعيل خيوط الرسم المتعددة (قوة الـ Compositor Thread)
+        // هذا يجعل السكرول لا يتأثر بتجمد الجافا سكريبت
+        settings.setEnableSmoothTransition(true); 
+        
+        // 2. إجبار المتصفح على رسم "الطبقات" مسبقاً (Pre-rasterization)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            settings.setOffscreenPreRaster(true);
+        }
+
+        // 3. تحرير طاقة المعالج الرسومي (GPU Unbound)
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        
+        // 4. تعطيل تأخير النقر (300ms delay) برمجياً
+        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
+
+        // 5. تفعيل ميزة الـ "Scroll Buffering" لضمان سلاسة Kiwi
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            webView.setVerticalScrollbarThumbDrawable(null); // تخفيف عبء الرسم
+        }
+
+        // بقية الإعدادات السابقة...
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
 
@@ -491,4 +500,4 @@ public class WebEngineManager {
         }
         return true;
     }
-                }
+            }
