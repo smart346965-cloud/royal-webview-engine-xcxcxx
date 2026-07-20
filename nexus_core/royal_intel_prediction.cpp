@@ -89,23 +89,35 @@ public:
      * 🌪️ تحرير الخيط الرئيسي (Off-Main-Thread Architect)
      * إجبار الكروميوم على استخدام خيط الـ Compositor لرسم العناصر مسبقاً
      */
+    // [تعديل جراحي في royal_intel_prediction.cpp]
     void offload_rendering_to_gpu() {
         EM_ASM({
-            // حقن CSS "قسري" لإجبار المتصفح على استخدام طبقات الـ Composite
+            if (document.getElementById('royal-gpu-booster')) return;
             const style = document.createElement('style');
+            style.id = 'royal-gpu-booster';
             style.textContent = `
-                * { 
-                    will-change: transform; 
-                    backface-visibility: hidden; 
-                    perspective: 1000px;
+                /* إجبار محرك الكروميوم على إنشاء طبقات مستقلة (Composite Layers) */
+                body, html { 
+                    height: 100%;
+                    overflow-x: hidden;
+                    -webkit-overflow-scrolling: touch; 
+                    scroll-behavior: smooth;
                 }
-                body { 
-                    content-visibility: auto; 
-                    contain-intrinsic-size: 1000px;
+                
+                /* تحرير كرت الشاشة للعناصر التي تتحرك أثناء السكرول */
+                .royal-is-scrolling * { 
+                    pointer-events: none !important; /* تعطيل حسابات اللمس أثناء الحركة */
+                }
+
+                /* القاعدة الذهبية: إجبار الـ GPU على الرسم المسبق للمحتوى المخفي */
+                main, section, article { 
+                    transform: translateZ(0); 
+                    will-change: transform;
+                    contain: paint; /* أهم قاعدة لمنع "النتعة" عبر عزل منطقة الرسم */
                 }
             `;
             document.head.appendChild(style);
-            console.log("🌪️ NUCLEUS: Main Thread Liberated. Rendering moved to GPU.");
+            console.log("🌪️ NUCLEUS: GPU Rasterization Optimized & Layers Isolated.");
         });
     }
 
