@@ -43,10 +43,10 @@
         generateReport: function() {
             console.groupCollapsed("%c📊 NEXUS DIAGNOSTIC REPORT (اضغط لفتح التقرير الشامل)", "color: #00ffff; font-size: 14px; font-weight: bold; background: #111; padding: 6px; border-radius: 4px;");
             
-            // 1. تقرير نواة الانصهار (WASM Core)
+            // 1. تقرير نواة الانصهار (WASM Core) - تم تعديل الخط للأسود الداكن
             const wasmMeasure = performance.getEntriesByName('WASM_IGNITION')[0];
             const wasmTime = wasmMeasure ? wasmMeasure.duration.toFixed(2) : 'N/A';
-            console.log(`%c🧠 زمن بناء واستيقاظ النواة (C++): %c${wasmTime} ms`, "color: #ffaa00; font-weight:bold;", "color:#fff;");
+            console.log(`%c🧠 زمن بناء واستيقاث النواة (C++): %c${wasmTime} ms`, "color: #d97706; font-weight:bold;", "color: #000000; font-weight: bold; font-size: 12px;");
             
             // 2. تقرير سرعة الرسم والتنقل (Render & Navigation)
             const nav = performance.getEntriesByType("navigation")[0];
@@ -54,29 +54,29 @@
             const fcp = paint.find(p => p.name === 'first-contentful-paint');
             
             if (nav) {
-                console.log(`%c🚀 نوع الدخول للصفحة: %c${nav.type.toUpperCase()}`, "color: #ffaa00; font-weight:bold;", "color:#fff;");
-                console.log(`%c⏱️ زمن الاستجابة للهيكل (DOM Interactive): %c${nav.domInteractive.toFixed(2)} ms`, "color: #ffaa00; font-weight:bold;", "color:#fff;");
-                console.log(`%c🎨 زمن اكتمال الموقع بالكامل (Load Complete): %c${nav.loadEventEnd.toFixed(2)} ms`, "color: #ffaa00; font-weight:bold;", "color:#fff;");
+                console.log(`%c🚀 نوع الدخول للصفحة: %c${nav.type.toUpperCase()}`, "color: #d97706; font-weight:bold;", "color: #000000; font-weight: bold;");
+                console.log(`%c⏱️ زمن الاستجابة للهيكل (DOM Interactive): %c${nav.domInteractive.toFixed(2)} ms`, "color: #d97706; font-weight:bold;", "color: #000000; font-weight: bold;");
+                console.log(`%c🎨 زمن اكتمال الموقع بالكامل (Load Complete): %c${nav.loadEventEnd.toFixed(2)} ms`, "color: #d97706; font-weight:bold;", "color: #000000; font-weight: bold;");
             }
-            if (fcp) console.log(`%c👁️ أول بيكسلة ظهرت للشاشة (FCP): %c${fcp.startTime.toFixed(2)} ms`, "color: #ffaa00; font-weight:bold;", "color:#fff;");
+            if (fcp) console.log(`%c👁️ أول بيكسلة ظهرت للشاشة (FCP): %c${fcp.startTime.toFixed(2)} ms`, "color: #d97706; font-weight:bold;", "color: #000000; font-weight: bold;");
 
             // 3. تقرير دعم تقنية الانصهار السريع (Speculation Rules)
             const specSupported = HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules');
-            console.log(`%c🔮 تقنية التنبؤ والرندرة المسبقة: %c${specSupported ? 'تعمل بكفاءة 100%' : 'غير مدعومة في هذا الويبفيو!'}`, "color: #ffaa00; font-weight:bold;", specSupported ? "color:#00ff00;" : "color:#ff3333;");
+            console.log(`%c🔮 تقنية التنبؤ والرندرة المسبقة: %c${specSupported ? 'تعمل بكفاءة 100%' : 'غير مدعومة في هذا الويبفيو!'}`, "color: #d97706; font-weight:bold;", specSupported ? "color: #059669; font-weight: bold;" : "color: #dc2626; font-weight: bold;");
 
             // 4. تحليل الاختناق (Bottleneck Diagnosis)
-            console.log("%c🔍 --- التشخيص الآلي لسبب التأخير ---", "color: #00ffff; font-weight:bold;");
+            console.log("%c🔍 --- التشخيص الآلي لسبب التأخير ---", "color: #0284c7; font-weight:bold;");
             
             if (this.longTasks.length > 0) {
-                console.log(`%c⚠️ تم اكتشاف مهام ثقيلة جمدت الشاشة! (Total Blocking: ${this.metrics.total_blocking_time.toFixed(2)}ms)`, "color: #ff3333; font-weight:bold;");
+                console.log(`%c⚠️ تم اكتشاف مهام ثقيلة جمدت الشاشة! (Total Blocking: ${this.metrics.total_blocking_time.toFixed(2)}ms)`, "color: #dc2626; font-weight:bold;");
                 console.table(this.longTasks);
-                console.log("%c💡 التشخيص: التأخير سببه سكربتات جافاسكريبت داخل الموقع الأصلي تعيق عمل المحرك.", "color: #ff3333;");
+                console.log("%c💡 التشخيص: التأخير سببه سكربتات جافاسكريبت داخل الموقع الأصلي تعيق عمل المحرك.", "color: #dc2626; font-weight:bold;");
             } else if (wasmMeasure && wasmMeasure.duration > 300) {
-                console.log("%c💡 التشخيص: تأخير بسبب بطء معالج الهاتف في فك تشفير ملف الـ WASM.", "color: #ffaa00;");
+                console.log("%c💡 التشخيص: تأخير بسبب بطء معالج الهاتف في فك تشفير ملف الـ WASM.", "color: #d97706; font-weight:bold;");
             } else if (nav && nav.domInteractive > 800) {
-                console.log("%c💡 التشخيص: تأخير من الشبكة أو سيرفر الموقع الأصلي يرسل الـ HTML ببطء.", "color: #ffaa00;");
+                console.log("%c💡 التشخيص: تأخير من الشبكة أو سيرفر الموقع الأصلي يرسل الـ HTML ببطء.", "color: #d97706; font-weight:bold;");
             } else {
-                console.log("%c✅ التشخيص: لا يوجد أي بلوك! الأداء مثالي والنواة تعمل كالزبدة.", "color: #00ff00; font-weight:bold;");
+                console.log("%c✅ التشخيص: لا يوجد أي بلوك! الأداء مثالي والنواة تعمل كالزبدة.", "color: #059669; font-weight:bold;");
             }
             
             console.groupEnd();
