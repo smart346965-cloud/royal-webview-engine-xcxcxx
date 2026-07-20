@@ -158,6 +158,34 @@
                 if (link) window.RoyalWasm.intel.lock_current_dom_state();
             });
 
+            // [تعديل جراحي: مستشعر الاستقرار لفتح صنابير السكربتات]
+            // =========================================================================
+            // 🛡️ NEXUS STABILITY WATCHER: مراقب الخمول لفك خناق السكربتات
+            // =========================================================================
+            const triggerMaestroStabilization = () => {
+                if (window.Nexus && window.Nexus.Maestro) {
+                    // إرسال النبضة لنواة C++ لإعلان حالة الاستقرار المطلق
+                    window.Nexus.Maestro.getGuardian().mark_stabilized();
+                    console.log("%c🛡️ [NEXUS] SHIELD: Main Thread is now COLD. Scripts released to Idle Queue.", "color:#3b82f6; font-weight:bold; background:#e0f2fe; padding:2px 5px;");
+                    
+                    // إشعار الجافا عبر الجسر (اختياري إذا أردت فتح الفلترة في shouldInterceptRequest)
+                    if (window.RoyalBridge && window.RoyalBridge.log) {
+                        window.RoyalBridge.log("NUCLEUS_STABILIZED");
+                    }
+                }
+            };
+
+            // خوارزمية الانتظار الذكي: ننتظر خمول المتصفح (Idle) + أمان زمني
+            if ('requestIdleCallback' in window) {
+                // الخيار الاحترافي: ننتظر حتى يخبرنا المتصفح أنه "فاضي" تماماً
+                requestIdleCallback(() => {
+                    setTimeout(triggerMaestroStabilization, 1500); // نمهله 1.5 ثانية إضافية بعد أول خمول
+                }, { timeout: 4000 }); // حد أقصى 4 ثوانٍ إذا ظل الموقع ثقيلاً
+            } else {
+                // Fallback للأجهزة القديمة
+                setTimeout(triggerMaestroStabilization, 4000);
+            }
+
             window.NexusTelemetry.endMark('WASM_IGNITION'); // ⏱️ إنهاء قياس النواة
 
             console.log("🚀 NUCLEUS ACTIVE: Zero-Latency Fusion Complete.");
