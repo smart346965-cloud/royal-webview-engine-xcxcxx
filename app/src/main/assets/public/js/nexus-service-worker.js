@@ -6,6 +6,7 @@
  */
 
 const CACHE_NAME = 'nexus-v8-memory-cache-v1';
+const BYTECODE_CACHE_NAME = 'royal-v8-bytecode-v1';
 
 // 👑 التثبيت: فرض التفعيل الفوري دون انتظار إغلاق التبويبات القديمة
 self.addEventListener('install', (event) => {
@@ -19,7 +20,7 @@ self.addEventListener('activate', (event) => {
         caches.keys().then((cacheNames) => {
             return Promise.all(
                 cacheNames.map((cache) => {
-                    if (cache !== CACHE_NAME) {
+                    if (cache !== CACHE_NAME && cache !== BYTECODE_CACHE_NAME) {
                         console.log('[Nexus SW] 🧹 Clearing old V8 cache:', cache);
                         return caches.delete(cache);
                     }
@@ -64,11 +65,28 @@ self.addEventListener('fetch', (event) => {
 
 // 🧠 قناة اتصال سرية: استقبال الأوامر من RoyalJsBridge لتسخين الروابط
 self.addEventListener('message', (event) => {
-    if (event.data && event.data.type === 'PREFETCH') {
-        caches.open(CACHE_NAME).then((cache) => {
-            cache.add(event.data.url).then(() => {
-                console.log(`[Nexus SW] 🔥 V8 Warmed up: ${event.data.url}`);
-            });
-        });
+    // ⚡ استقبال أمر الأرشفة الصارمة من الـ C++ Guardian
+    if (event.data && event.data.type === 'SAVE_BYTECODE_STRICT') {
+        const urlsToCache = event.data.urls || [];
+        
+        event.waitUntil(
+            caches.open(BYTECODE_CACHE_NAME).then((cache) => {
+                return Promise.all(urlsToCache.map(url => {
+                    return fetch(url).then(response => {
+                        // 💉 حقن رؤوس استجابة تخدع V8 بأن الملف لن يتغير أبداً
+                        // هذا يحفز المحرك على إنتاج الـ Bytecode فوراً
+                        const headers = new Headers(response.headers);
+                        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+                        
+                        const fakeResponse = new Response(response.body, {
+                            status: response.status,
+                            statusText: response.statusText,
+                            headers: headers
+                        });
+                        return cache.put(url, fakeResponse);
+                    });
+                }));
+            }).then(() => console.log("⚡ [Nexus SW] Bytecode Persistence Primed."))
+        );
     }
 });
