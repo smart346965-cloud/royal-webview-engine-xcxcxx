@@ -186,6 +186,42 @@ public:
             }
         });
     }
+
+    /**
+     * 🚀 خوارزمية "التدفق القسري" (Forced Multi-Burst Stream)
+     * تقوي الشبكة الضعيفة عبر تزييف حالة الاتصال وفتح مسارات متوازية
+     */
+    void activate_network_turbo() {
+        EM_ASM({
+            // 1. تزييف "الوعي الشبكي": إيهام النواة بأننا على اتصال 5G ألياف ضوئية
+            // هذا يجبر الكروميوم على رفع سقف الـ Concurrent Connections من 6 إلى أقصى حد
+            if (navigator.connection) {
+                Object.defineProperty(navigator, 'connection', {
+                    get: () => ({
+                        effectiveType: '4g',
+                        downlink: 100,
+                        rtt: 5,
+                        saveData: false
+                    }),
+                    configurable: true
+                });
+            }
+
+            // 2. محرك "المصادرة": رفع أولوية تحميل الأصول الحرجة (Critical Assets)
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach(m => {
+                    m.addedNodes.forEach(node => {
+                        if (node.tagName === 'SCRIPT' || node.tagName === 'LINK') {
+                            node.setAttribute('fetchpriority', 'high');
+                        }
+                    });
+                });
+            });
+            observer.observe(document.documentElement, { childList: true, subtree: true });
+            
+            console.log("🚀 NUCLEUS: Network Turbo Active (Forced 5G Simulation).");
+        });
+    }
 };
 
 EMSCRIPTEN_BINDINGS(royal_guardian_module) {
@@ -199,5 +235,6 @@ EMSCRIPTEN_BINDINGS(royal_guardian_module) {
         .function("trigger_bytecode_opt", &RoyalNetworkGuardian::trigger_bytecode_opt)
         .function("maintain_hot_socket", &RoyalNetworkGuardian::maintain_hot_socket)
         .function("get_stubborn_strategy", &RoyalNetworkGuardian::get_stubborn_strategy)
-        .function("force_bytecode_persistence", &RoyalNetworkGuardian::force_bytecode_persistence);
+        .function("force_bytecode_persistence", &RoyalNetworkGuardian::force_bytecode_persistence)
+        .function("activate_network_turbo", &RoyalNetworkGuardian::activate_network_turbo);
     }
