@@ -15,6 +15,9 @@ import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+
 public class WebEngineManager {
 
     private final Context context;
@@ -268,10 +271,26 @@ public class WebEngineManager {
                 triggerOfflineProtection(view, failingUrl);
             }
 
+            // [تعديل جراحي 2: حقن درع نكسوس في الأندرويد]
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 if (request == null || request.getUrl() == null) return null;
                 String url = request.getUrl().toString();
+
+                // 1. خوارزمية التعرف السريع على الطفيليات (Fast String Matching)
+                // نضع قائمة سوداء سريعة في الجافا تعكس ما في الـ C++ لضمان عدم تأخير الطلب
+                if (url.contains("gorgias") || url.contains("facebook.net") || url.contains("analytics") || url.contains("klaviyo")) {
+                    
+                    // 🚀 [السر المهني]: بدلاً من الحظر (404) الذي قد يكسر الموقع
+                    // نرجع استجابة (200 OK) ولكن بمحتوى فارغ تماماً (JS Stub)
+                    // هذا يحرر الـ Main Thread فوراً ويجعل المتصفح يظن أن السكربت انتهى تحميله!
+                    String stubScript = "/* Isolated by Nexus Script Shield to ensure 60FPS Performance */";
+                    InputStream stubStream = new ByteArrayInputStream(stubScript.getBytes());
+                    
+                    Log.d("RoyalEngine", "🛡️ Shield: Isolated Parasitic Script -> " + url);
+                    
+                    return new WebResourceResponse("application/javascript", "UTF-8", stubStream);
+                }
 
                 // 👑 [محاكي النطاق الافتراضي] اعتراض ملف الـ JS الوهمي وإعطائه تصريح العبور الآمن (CORS)
                 if (url.endsWith("/royal_nucleus.js")) {
@@ -510,4 +529,4 @@ public class WebEngineManager {
         }
         return true;
     }
-                }
+            }
