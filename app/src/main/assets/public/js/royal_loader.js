@@ -67,7 +67,24 @@
                 requestIdle(() => window.RoyalSpeculator.init());
             }
 
+            // 👑 7. إطلاق البروتوكولات السيادية
+            // تفعيل التوربو الشبكي فوراً
+            window.RoyalWasm.guardian.activate_network_turbo();
+
+            // تفعيل التنبؤ العكسي (الرجوع اللحظي)
+            // نأخذ رابط الصفحة السابقة (document.referrer) ونرسله للـ C++ ليرسمه مسبقاً
+            if (document.referrer && document.referrer.includes(window.location.origin)) {
+                window.RoyalWasm.intel.predict_back_step(document.referrer);
+            }
+
+            // 👑 8. تأمين الـ BFCache قبل الانتقال لأي صفحة
+            window.addEventListener('click', (e) => {
+                const link = e.target.closest('a');
+                if (link) window.RoyalWasm.intel.lock_current_dom_state();
+            });
+
             console.log("🚀 NUCLEUS ACTIVE: Zero-Latency Fusion Complete.");
+            console.log("🚀 NUCLEUS READY: Network Turbo & Back-Step Oracle Online.");
 
         } catch (err) {
             console.warn("Nucleus Ignition partial fail, retrying...", err);
