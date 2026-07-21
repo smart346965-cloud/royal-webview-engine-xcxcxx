@@ -66,31 +66,23 @@ public class WebEngineManager {
         this.splashStartTime = startTime;
     }
 
+    // [تعديل جراحي 1: WebEngineManager.java]
     public void init() {
-        // 👑 1. حارس العودة الساخنة (Warm Resume Guard)
+        // 🛡️ تم تعطيل حذف السبلاش التلقائي هنا لضمان السيادة الزمنية لـ FIXED_SPLASH_TIME
         if (RoyalWebViewHost.isReady() && webView.getUrl() != null && !webView.getUrl().equals("about:blank")) {
-            android.util.Log.i("RoyalEngine", "🔥 Warm Resume Detected! Skipping Splash.");
-            webView.setAlpha(1f);
-            removeSplashInstantly();
-            attachClients();
-            return;
+            android.util.Log.i("RoyalEngine", "🔥 Warm Resume Detected, but enforcing fixed splash time.");
+            // لا تستدعي removeSplashInstantly() هنا أبداً
         }
 
         configureSettings();
         attachClients();
 
-        // 👑 إرسال سرعة السكرول لمحرك الشبكة حتى تصبح قرارات الـ Prefetch أكثر ذكاءً
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            webView.setOnScrollChangeListener(
-                    (v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
-
-                        RoyalNetworkEngine.notifyScroll(scrollY);
-
-                        v.removeCallbacks(scrollFinishedRunnable);
-
-                        v.postDelayed(scrollFinishedRunnable, 90);
-
-                    });
+            webView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
+                RoyalNetworkEngine.notifyScroll(scrollY);
+                v.removeCallbacks(scrollFinishedRunnable);
+                v.postDelayed(scrollFinishedRunnable, 90);
+            });
         }
     }
 
@@ -125,15 +117,22 @@ public class WebEngineManager {
         });
     }
 
-    // 👑 تعديل جراحي 4: فرض قيمة زمنية ثابتة للسبلاش (7 ثوانٍ بالتمام والكمال)
+    // [تعديل جراحي 2: WebEngineManager.java]
     public void triggerFinalReveal() {
         if (splashChecker.isRemoved()) return;
 
-        // نستخدم الـ Runnable الأصلي markSplashRemoved لضمان عدم التكرار
-        activity.runOnUiThread(() -> {
-            removeSplashSmoothly();
-            Log.i("RoyalEngine", "👑 Fixed Time Elapsed. Releasing UI Control.");
-        });
+        long currentTime = System.currentTimeMillis();
+        long elapsed = currentTime - splashStartTime;
+        
+        // 👑 نستخدم القيمة 5000ms مباشرة هنا لضمان التطابق مع MainActivity
+        long remaining = Math.max(0, 5000 - elapsed); 
+
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!splashChecker.isRemoved()) {
+                removeSplashSmoothly();
+                Log.i("RoyalEngine", "👑 Time's up! Fixed Splash Released.");
+            }
+        }, remaining);
     }
 
     // [تعديل جراحي في WebEngineManager.java]
