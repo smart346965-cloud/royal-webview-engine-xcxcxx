@@ -27,6 +27,15 @@ public class SystemUI {
         window.setStatusBarColor(Color.TRANSPARENT);
         window.setNavigationBarColor(Color.TRANSPARENT);
 
+        // ==========================================
+        // 👑 [التعديل هنا]: السماح بتمدد الواجهة ليشمل ثقب الكاميرا (Notch/Cutout)
+        // ==========================================
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            window.getAttributes().layoutInDisplayCutoutMode = 
+                android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        // ==========================================
+
         // منع الطبقة الرمادية في Android 10+
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
             window.setNavigationBarContrastEnforced(false);
@@ -76,4 +85,4 @@ public class SystemUI {
                 + 0.114 * Color.blue(color)) / 255;
         return darkness < 0.5;
     }
-            }
+}
