@@ -352,23 +352,24 @@ private:
     RoyalNetworkGuardian* guardian_ptr;
 
 public:
-    // [تعديل جراحي في المايسترو - Maestro Fusion]
+    // [تعديل جراحي آمن للبيئة - Off-Main-Thread Fusion]
     RoyalNucleus() {
         predictor_ptr = new RoyalIntelPrediction();
         guardian_ptr = new RoyalNetworkGuardian();
         
-        // 🚀 تفعيل الميزات الشرسة فور إقلاع النواة
-        guardian_ptr->enforce_async_visuals();
-        guardian_ptr->trigger_bytecode_opt();
-        
-        // 🌪️ محاكة خيط التركيب + إرسال إشارة للمربع الأزرق
+        // ❌ تم إيقاف الاستدعاء المباشر للدوال المعتمدة على الـ DOM هنا 
+        // لتجنب خطأ MutationObserver داخل الـ Worker.
+        // الدعم التلقائي أصبح آمنًا داخل الدوال نفسها عند استدعائها يدوياً.
+
+        // 🌪️ محاكاة خيط التركيب + إرسال إشارة للمربع الأزرق
         EM_ASM({
             console.log("👑 ROYAL NUCLEUS: Maestro fused with Intel & Guardian.");
             console.log("🌪️ Compositor Simulation: ACTIVE.");
             
-            // 🟦 إرسال "إشارة حياة" للخيط الرئيسي ليرسم المربع الأزرق
-            // نستخدم postMessage لأننا داخل Worker
-            postMessage({ type: 'DRAW_BLUE_SQUARE' });
+            // 🟦 إرسال إشارة الجاهزية والرسم للخيط الرئيسي بأمان
+            if (typeof postMessage !== 'undefined') {
+                postMessage({ type: 'DRAW_BLUE_SQUARE', text: 'NUCLEUS' });
+            }
         });
     }
 
