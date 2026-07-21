@@ -28,7 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private WebView activeWebView;
     private ProgressBar progressBar;
     private long splashStartTime = 0;
-    private static final long MIN_SPLASH_TIME = 2500; // الحد الأدنى لبقاء السبلاش (2.5 ثانية) لضمان الاستقرار البصري
+    private static final long FIXED_SPLASH_TIME = 3000; // قيمة ثابتة 3 ثوانٍ بالتمام والكمال
     private boolean isPageReady = false; // flag للرندرة
 
     @Override
@@ -132,8 +132,16 @@ public class MainActivity extends AppCompatActivity {
                 this, activeWebView, splashContainer, progressBar,
                 () -> splashRemoved = true, () -> splashRemoved
         );
-        engineManager.setSplashStartTime(splashStartTime); // تمرير وقت البدء للمدير
+        engineManager.setSplashStartTime(splashStartTime); 
         engineManager.init();
+
+        // 👑 [إضافة جراحية]: حارس الـ 3 ثواني الثابت
+        // يضمن إبقاء السبلاش معروضاً لمدة 3 ثوانٍ حتى لو اكتملت الرندرة في 10 ملي ثانية
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            if (!splashRemoved && engineManager != null) {
+                engineManager.triggerFinalReveal();
+            }
+        }, FIXED_SPLASH_TIME);
 
         // 5. المزامنة مع الجسر
         if (RoyalWebViewHost.getBridge() != null) {
