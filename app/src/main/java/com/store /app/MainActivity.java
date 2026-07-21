@@ -99,35 +99,26 @@ public class MainActivity extends AppCompatActivity {
         setupSplashScreen();
     }
 
+    // [تعديل جراحي 3: MainActivity.java]
     private void setupSplashScreen() {
         splashStartTime = System.currentTimeMillis();
 
-        // 1. الحاوية الرئيسية (خلفية السبلاش)
         final FrameLayout splashContainer = new FrameLayout(this);
         splashContainer.setBackgroundColor(Color.parseColor("#F3F4F6"));
-        splashContainer.setAlpha(1f);
-
-        // 2. إضافة الأيقونة في المنتصف (Unified Icon)
+        
         ImageView splashIcon = new ImageView(this);
-        // ملاحظة: استبدل R.mipmap.ic_launcher بأيقونة السبلاش الخاصة بك
         splashIcon.setImageResource(R.mipmap.ic_launcher); 
-        
-        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(
-                280, 280, android.view.Gravity.CENTER); // حجم الأيقونة 280px
+        FrameLayout.LayoutParams iconParams = new FrameLayout.LayoutParams(280, 280, android.view.Gravity.CENTER);
         splashIcon.setLayoutParams(iconParams);
-        
         splashContainer.addView(splashIcon);
 
         addContentView(splashContainer, new ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // 3. شريط التقدم النحيف (وضعناه فوق الحاوية)
         progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progressBar.setMax(100);
-        progressBar.setScaleY(0.6f);
         addContentView(progressBar, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 8));
 
-        // 4. ربط المدير
         engineManager = new WebEngineManager(
                 this, activeWebView, splashContainer, progressBar,
                 () -> splashRemoved = true, () -> splashRemoved
@@ -135,19 +126,18 @@ public class MainActivity extends AppCompatActivity {
         engineManager.setSplashStartTime(splashStartTime); 
         engineManager.init();
 
-        // 👑 [إضافة جراحية]: حارس الـ 5 ثواني الثابت
-        // يضمن إبقاء السبلاش معروضاً لمدة 5 ثوانٍ حتى لو اكتملت الرندرة في 10 ملي ثانية
+        // 🚀 التعديل الحاسم: هذا هو الـ Handler الوحيد الذي سيتحكم في المصير
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            if (!splashRemoved && engineManager != null) {
+            if (!splashRemoved) {
                 engineManager.triggerFinalReveal();
             }
         }, FIXED_SPLASH_TIME);
 
-        // 5. المزامنة مع الجسر (معطلة لفرض السيطرة الزمنية)
+        // 🛡️ تم تعطيل استجابة الجسر (Bridge Callback) لحذف السبلاش لكي لا يكسر التوقيت
         if (RoyalWebViewHost.getBridge() != null) {
             RoyalWebViewHost.getBridge().setOnHideSplashCallback(() -> {
-                // تم تعطيل الإخفاء الفوري هنا لفرض السيطرة الزمنية
-                Log.i(TAG, "⚡ Bridge signal received, but holding splash for fixed time...");
+                Log.i(TAG, "⚡ Page ready, but Splash is LOCKED by engineer's timer.");
+                // لا نفعل شيئاً هنا.. ننتظر الـ FIXED_SPLASH_TIME
             });
         }
     }
@@ -180,4 +170,4 @@ public class MainActivity extends AppCompatActivity {
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
-            }
+                                }
