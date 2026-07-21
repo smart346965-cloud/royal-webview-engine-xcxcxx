@@ -122,19 +122,22 @@ public:
      */
     void enforce_async_visuals() {
         EM_ASM({
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach(m => {
-                    m.addedNodes.forEach(node => {
-                        if (m.tagName === 'IMG') {
-                            // إجبار فك التشفير غير المتزامن (قوة Kiwi)
-                            node.decoding = 'async'; 
-                            node.loading = 'lazy';
-                        }
+            if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined') {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach(m => {
+                        m.addedNodes.forEach(node => {
+                            if (node.tagName === 'IMG') {
+                                node.decoding = 'async'; 
+                                node.loading = 'lazy';
+                            }
+                        });
                     });
                 });
-            });
-            observer.observe(document.documentElement, { childList: true, subtree: true });
-            console.log("🖼️ NUCLEUS: Async Image Decoding Enforced.");
+                observer.observe(document.documentElement, { childList: true, subtree: true });
+                console.log("🖼️ NUCLEUS: Async Image Decoding Enforced.");
+            } else {
+                console.log("⚡ NUCLEUS (Worker): Async visuals skipped in worker thread.");
+            }
         });
     }
 
@@ -160,14 +163,13 @@ public:
     void maintain_hot_socket(const std::string& domain) {
         EM_ASM_({
             const url = UTF8ToString($0);
-            // حقن رابط تسخين صامت (Preconnect) لمنع ضياع وقت المصافحة (Handshake)
-            const link = document.createElement('link');
-            link.rel = 'preconnect';
-            link.href = url;
-            link.crossOrigin = 'anonymous';
-            document.head.appendChild(link);
-            
-            // إرسال نبضة دورية (Keep-alive pulse)
+            if (typeof document !== 'undefined') {
+                const link = document.createElement('link');
+                link.rel = 'preconnect';
+                link.href = url;
+                link.crossOrigin = 'anonymous';
+                document.head.appendChild(link);
+            }
             fetch(url, { mode: 'no-cors', cache: 'no-store', priority: 'low' });
             console.log("🌐 NUCLEUS: Socket held HOT for " + url);
         }, domain.c_str());
@@ -210,33 +212,26 @@ public:
      */
     void activate_network_turbo() {
         EM_ASM({
-            // 1. تزييف "الوعي الشبكي": إيهام النواة بأننا على اتصال 5G ألياف ضوئية
-            // هذا يجبر الكروميوم على رفع سقف الـ Concurrent Connections من 6 إلى أقصى حد
-            if (navigator.connection) {
+            if (typeof navigator !== 'undefined' && navigator.connection) {
                 Object.defineProperty(navigator, 'connection', {
-                    get: () => ({
-                        effectiveType: '4g',
-                        downlink: 100,
-                        rtt: 5,
-                        saveData: false
-                    }),
+                    get: () => ({ effectiveType: '4g', downlink: 100, rtt: 5, saveData: false }),
                     configurable: true
                 });
             }
 
-            // 2. محرك "المصادرة": رفع أولوية تحميل الأصول الحرجة (Critical Assets)
-            const observer = new MutationObserver((mutations) => {
-                mutations.forEach(m => {
-                    m.addedNodes.forEach(node => {
-                        if (node.tagName === 'SCRIPT' || node.tagName === 'LINK') {
-                            node.setAttribute('fetchpriority', 'high');
-                        }
+            if (typeof document !== 'undefined' && typeof MutationObserver !== 'undefined') {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach(m => {
+                        m.addedNodes.forEach(node => {
+                            if (node.tagName === 'SCRIPT' || node.tagName === 'LINK') {
+                                node.setAttribute('fetchpriority', 'high');
+                            }
+                        });
                     });
                 });
-            });
-            observer.observe(document.documentElement, { childList: true, subtree: true });
-            
-            console.log("🚀 NUCLEUS: Network Turbo Active (Forced 5G Simulation).");
+                observer.observe(document.documentElement, { childList: true, subtree: true });
+            }
+            console.log("🚀 NUCLEUS: Network Turbo Active.");
         });
     }
 
