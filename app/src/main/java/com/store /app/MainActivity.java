@@ -28,7 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private WebView activeWebView;
     private ProgressBar progressBar;
     private long splashStartTime = 0;
-    private static final long FIXED_SPLASH_TIME = 7000; // قيمة ثابتة 3 ثوانٍ بالتمام والكمال
+    private static final long FIXED_SPLASH_TIME = 5000; // قيمة ثابتة 5 ثوانٍ بالتمام والكمال
     private boolean isPageReady = false; // flag للرندرة
 
     @Override
@@ -135,19 +135,19 @@ public class MainActivity extends AppCompatActivity {
         engineManager.setSplashStartTime(splashStartTime); 
         engineManager.init();
 
-        // 👑 [إضافة جراحية]: حارس الـ 3 ثواني الثابت
-        // يضمن إبقاء السبلاش معروضاً لمدة 3 ثوانٍ حتى لو اكتملت الرندرة في 10 ملي ثانية
+        // 👑 [إضافة جراحية]: حارس الـ 5 ثواني الثابت
+        // يضمن إبقاء السبلاش معروضاً لمدة 5 ثوانٍ حتى لو اكتملت الرندرة في 10 ملي ثانية
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (!splashRemoved && engineManager != null) {
                 engineManager.triggerFinalReveal();
             }
         }, FIXED_SPLASH_TIME);
 
-        // 5. المزامنة مع الجسر
+        // 5. المزامنة مع الجسر (معطلة لفرض السيطرة الزمنية)
         if (RoyalWebViewHost.getBridge() != null) {
             RoyalWebViewHost.getBridge().setOnHideSplashCallback(() -> {
-                isPageReady = true; // الإشارة قادمة من المحرك
-                engineManager.triggerFinalReveal();
+                // تم تعطيل الإخفاء الفوري هنا لفرض السيطرة الزمنية
+                Log.i(TAG, "⚡ Bridge signal received, but holding splash for fixed time...");
             });
         }
     }
