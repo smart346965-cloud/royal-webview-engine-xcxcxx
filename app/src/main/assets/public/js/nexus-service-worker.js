@@ -30,32 +30,50 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// 👑 اعتراض الطلبات: التنسيق مع حارس الشبكة النيتف
+// 👑 اعتراض الطلبات: التنسيق مع حارس الشبكة النيتف والتثبيت الفوري للصفحة الرئيسية
 self.addEventListener('fetch', (event) => {
     const request = event.request;
     const url = new URL(request.url);
 
-    // تجاهل طلبات الـ API والتحليلات (نتركها تعبر للإنترنت مباشرة)
+    // تجاهل طلبات الـ API والتحليلات والطلبات غير الجالبة
     if (url.pathname.includes('/api/') || request.method !== 'GET') {
         return;
     }
 
-    // 🚀 استراتيجية (Stale-While-Revalidate) لملفات الهيكل الثابتة
-    // تعطي المستخدم النسخة المخزنة فوراً، وتقوم بتحديثها في الخلفية من النيتف
+    // ⚡ [NEXUS ZERO-SECOND CORE]: تخصيص الصفحة الرئيسية للتسريع اللحظي (0ms)
+    const isHomePage = request.mode === 'navigate' && (url.pathname === '/' || url.pathname.endsWith('/index.html') || url.href === self.origin + '/');
+
+    if (isHomePage) {
+        event.respondWith(
+            caches.open(CACHE_NAME).then(async (cache) => {
+                // 1. إرجاع الصفحة المخزنة فوراً بـ 0ms إن وجدت
+                const cachedResponse = await cache.match(request);
+                
+                // 2. إرسال طلب شبكة خلفي لتجديد النسخة للمرة القادمة
+                const networkFetch = fetch(request).then((networkResponse) => {
+                    if (networkResponse && networkResponse.status === 200) {
+                        cache.put(request, networkResponse.clone());
+                    }
+                    return networkResponse;
+                }).catch(() => {/* تجاهل انقطاع الشبكة */});
+
+                // إرجاع النسخة المخزنة فورياً، أو انتظار الشبكة في أول فتح للتطبيق
+                return cachedResponse || networkFetch;
+            })
+        );
+        return;
+    }
+
+    // 🚀 استراتيجية (Stale-While-Revalidate) لباقي ملفات الهيكل (Scripts, Styles, Images)
     if (request.destination === 'document' || request.destination === 'script' || request.destination === 'style') {
         event.respondWith(
             caches.open(CACHE_NAME).then((cache) => {
                 return cache.match(request).then((cachedResponse) => {
                     const fetchedResponse = fetch(request).then((networkResponse) => {
-                        // حفظ النسخة الجديدة للصدمة القادمة
                         cache.put(request, networkResponse.clone());
                         return networkResponse;
-                    }).catch(() => {
-                        // إذا فشل الاتصال، نعتمد كلياً على النيتف أو الكاش
-                        return cachedResponse;
-                    });
+                    }).catch(() => cachedResponse);
 
-                    // إرجاع الكاش فوراً إذا وجد، وإلا انتظار الشبكة/النيتف
                     return cachedResponse || fetchedResponse;
                 });
             })
