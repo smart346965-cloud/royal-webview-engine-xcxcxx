@@ -93,6 +93,9 @@ private:
         return false;
     }
 
+    // [تعديل جراحي في royal_core.cpp لدعم Zero-Allocation]
+    float shared_buffer[10]; // حوض ذاكرة ثابت لاستقبال إحداثيات اللمس
+
 public:
     RoyalCoreEngine() : app_origin("") {}
 
@@ -162,6 +165,20 @@ public:
         
         // إذا تحرك الإصبع أكثر من 12 بكسل في أي اتجاه، نعتبره سكرول وليس نقرة
         return distance > 12.0f;
+    }
+
+    // عرض عنوان الذاكرة للجافا سكريبت
+    uintptr_t get_shared_buffer_ptr() {
+        return reinterpret_cast<uintptr_t>(shared_buffer);
+    }
+
+    /**
+     * ⚡ معالجة النبضة الخام (Raw Pulse Processing)
+     * تقرأ البيانات من الذاكرة المشتركة مباشرة
+     */
+    bool process_raw_touch() {
+        // shared_buffer[0] = x, shared_buffer[1] = y...
+        return detect_scroll_slop(shared_buffer[0], shared_buffer[1], shared_buffer[2], shared_buffer[3]);
     }
 
     /**
@@ -381,7 +398,9 @@ EMSCRIPTEN_BINDINGS(royal_nucleus_module) {
         .function("remove_speculation", &RoyalCoreEngine::remove_speculation)
         .function("analyze_scroll_velocity", &RoyalCoreEngine::analyze_scroll_velocity)
         .function("detect_scroll_slop", &RoyalCoreEngine::detect_scroll_slop)
-        .function("get_active_prefetch_list", &RoyalCoreEngine::get_active_prefetch_list);
+        .function("get_active_prefetch_list", &RoyalCoreEngine::get_active_prefetch_list)
+        .function("get_shared_buffer_ptr", &RoyalCoreEngine::get_shared_buffer_ptr)
+        .function("process_raw_touch", &RoyalCoreEngine::process_raw_touch);
     
     // كلاس الـ Network
     class_<RoyalNetworkCore>("RoyalNetworkCore")
