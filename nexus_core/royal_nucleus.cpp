@@ -25,17 +25,16 @@ private:
     long long ignition_timestamp = 0;
 
 public:
-    // [داخل RoyalIgnitionCore في royal_nucleus.cpp]
+    // [تعديل جراحي داخل RoyalIgnitionCore في royal_nucleus.cpp]
     RoyalIgnitionCore() {
         ignition_timestamp = std::chrono::system_clock::now().time_since_epoch().count();
         
+        // ❌ احذف كود الـ EM_ASM القديم الذي يلمس document.documentElement
+        // لأنه سيسبب Crash داخل الـ Worker
+        
+        // ✅ استبدله بإرسال رسالة كونسول فقط، لأن تحسين الـ Paint يجب أن يتم من الـ Loader
         EM_ASM({
-            console.log("⚡ NUCLEUS: Forcing Graphics Power...");
-            // إجبار الكروميوم على تجاهل تأخير الرندرة الأولي (Paint Holding)
-            if (window.chrome && window.performance) {
-                // ميزة تجريبية في كروميوم لتقليل الـ First Contentful Paint
-                document.documentElement.style.contentVisibility = 'auto';
-            }
+            console.log("⚡ NUCLEUS (Worker): Engine ignition sequence started.");
         });
     }
 
@@ -415,4 +414,4 @@ EMSCRIPTEN_BINDINGS(royal_nucleus_module) {
         .constructor()
         .function("getPredictor", &RoyalNucleus::getPredictor, allow_raw_pointers())
         .function("getGuardian", &RoyalNucleus::getGuardian, allow_raw_pointers());
-}
+    }
