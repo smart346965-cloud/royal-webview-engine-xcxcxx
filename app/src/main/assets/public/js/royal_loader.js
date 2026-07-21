@@ -113,15 +113,55 @@
             worker.onmessage = function(e) {
                 const msg = e.data;
 
+                // 🎨 دالة مساعدة لإنشاء ورسم المربع الأزرق فورياً فوق الصفحة
+                const drawBlueSquare = (label = "NUCLEUS SIGNAL") => {
+                    let square = document.getElementById('nexus-debug-square');
+                    if (!square) {
+                        square = document.createElement('div');
+                        square.id = 'nexus-debug-square';
+                        square.style.cssText = `
+                            position: fixed;
+                            top: 20px;
+                            right: 20px;
+                            width: 60px;
+                            height: 60px;
+                            background-color: #0066ff;
+                            border: 2px solid #ffffff;
+                            border-radius: 8px;
+                            box-shadow: 0 4px 15px rgba(0, 102, 255, 0.5);
+                            z-index: 999999;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            color: white;
+                            font-size: 10px;
+                            font-weight: bold;
+                            font-family: sans-serif;
+                            pointer-events: none;
+                            transition: transform 0.2s ease, opacity 0.2s ease;
+                        `;
+                        square.innerText = label;
+                        document.body.appendChild(square);
+                    }
+                    // إضافة تأثير وميض بصري عند استقبال كل إشارة
+                    square.style.transform = 'scale(1.2)';
+                    setTimeout(() => { square.style.transform = 'scale(1)'; }, 200);
+                };
+
                 if (msg.type === 'NUCLEUS_READY') {
                     // النواة جاهزة، نطلب منها فتح حوض الذاكرة
                     worker.postMessage({ type: 'INIT_MEMORY' });
                     window.NexusTelemetry.endMark('WASM_IGNITION'); // ⏱️ إنهاء قياس الإقلاع
                     console.log("🚀 NUCLEUS ACTIVE: Off-Main-Thread Fusion Complete.");
+                    
+                    // 🟦 رسم المربع الأزرق فور جاهزية النواة للتأكد البصري
+                    drawBlueSquare("READY");
                 }
 
-                // 🚀 تنفيذ أمر الرندرة المسبقة (لمس الـ DOM يتم هنا بأمان)
+                // 🚀 تنفيذ أمر الرندرة المسبقة + إرسال نبضة للمربع الأزرق
                 if (msg.type === 'EXECUTE_PRERENDER') {
+                    drawBlueSquare("RENDER"); // وميض الأزرق عند استقبال إشارة التنبؤ
+                    
                     if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
                         const script = document.createElement('script');
                         script.type = 'speculationrules';
@@ -131,6 +171,11 @@
                         document.head.appendChild(script);
                         console.log(`⚡ [NEXUS] Prerendering Injected for: ${msg.url}`);
                     }
+                }
+
+                // 🔵 أمر مخصص عام: إذا أرسل الـ Worker أي إشارة باسم DRAW_BLUE_SQUARE
+                if (msg.type === 'DRAW_BLUE_SQUARE') {
+                    drawBlueSquare(msg.text || "SIGNAL");
                 }
             };
 
