@@ -94,103 +94,79 @@
     const WASM_URL = 'https://royal-engine.local/public/js/royal_nucleus.wasm';
     const JS_URL = 'https://royal-engine.local/public/js/royal_nucleus.js';
 
+    // [تعديل جراحي في Loader.js - استبدال دالة ignite فقط]
     async function ignite() {
-        if (window.Nexus) return; 
+        if (window.NexusWorkerActive) return; 
 
         try {
             window.NexusTelemetry.startMark('WASM_IGNITION'); // ⏱️ بدء قياس النواة
 
-            const script = document.createElement('script');
-            script.src = JS_URL;
-            const scriptLoaded = new Promise(resolve => script.onload = resolve);
-            document.head.appendChild(script);
-            await scriptLoaded;
+            // 1. إطلاق الخيط المنفصل (Worker) بدلاً من تجميد الخيط الرئيسي
+            const worker = new Worker('public/js/nexus-worker.js');
+            window.NexusWorker = worker;
+            window.NexusWorkerActive = true;
 
-            const response = fetch(WASM_URL);
-            const module = await createRoyalNucleusModule({
-                instantiateWasm: (imports, successCallback) => {
-                    WebAssembly.instantiateStreaming(response, imports)
-                        .then(result => successCallback(result.instance))
-                        .catch(e => {
-                            console.error("Falling back to ArrayBuffer...", e);
-                            response.then(res => res.arrayBuffer()).then(bytes => 
-                                WebAssembly.instantiate(bytes, imports).then(res => successCallback(res.instance))
-                            );
-                        });
-                    return {}; 
+            // 2. إرسال أمر الإقلاع
+            worker.postMessage({ type: 'INIT' });
+
+            // 3. الاستماع لأوامر النواة المنفصلة (The Brain commands the Body)
+            worker.onmessage = function(e) {
+                const msg = e.data;
+
+                if (msg.type === 'NUCLEUS_READY') {
+                    // النواة جاهزة، نطلب منها فتح حوض الذاكرة
+                    worker.postMessage({ type: 'INIT_MEMORY' });
+                    window.NexusTelemetry.endMark('WASM_IGNITION'); // ⏱️ إنهاء قياس الإقلاع
+                    console.log("🚀 NUCLEUS ACTIVE: Off-Main-Thread Fusion Complete.");
                 }
-            });
 
-            const maestro = new module.RoyalNucleus();
-
-            window.Nexus = {
-                Maestro: maestro, 
-                Ignition: new module.RoyalIgnitionCore(),
-                Core: new module.RoyalCoreEngine(),
-                Network: new module.RoyalNetworkCore()
-            };
-
-            window.Nexus.Ignition.perform_socket_priming(window.location.origin);
-
-            window.RoyalWasm = {
-                core: window.Nexus.Core,
-                intel: maestro.getPredictor(),  
-                guardian: maestro.getGuardian() 
-            };
-
-            if (window.RoyalInteraction && typeof window.RoyalInteraction.init === 'function') {
-                window.RoyalInteraction.init();
-            }
-            
-            if (window.RoyalSpeculator && typeof window.RoyalSpeculator.init === 'function') {
-                const requestIdle = window.requestIdleCallback || function (cb) { setTimeout(cb, 100); };
-                requestIdle(() => window.RoyalSpeculator.init());
-            }
-
-            window.RoyalWasm.guardian.activate_network_turbo();
-
-            if (document.referrer && document.referrer.includes(window.location.origin)) {
-                window.RoyalWasm.intel.predict_back_step(document.referrer);
-            }
-
-            window.addEventListener('click', (e) => {
-                const link = e.target.closest('a');
-                if (link) window.RoyalWasm.intel.lock_current_dom_state();
-            });
-
-            // [تعديل جراحي: مستشعر الاستقرار لفتح صنابير السكربتات]
-            // =========================================================================
-            // 🛡️ NEXUS STABILITY WATCHER: مراقب الخمول لفك خناق السكربتات
-            // =========================================================================
-            const triggerMaestroStabilization = () => {
-                if (window.Nexus && window.Nexus.Maestro) {
-                    // إرسال النبضة لنواة C++ لإعلان حالة الاستقرار المطلق
-                    window.Nexus.Maestro.getGuardian().mark_stabilized();
-                    console.log("%c🛡️ [NEXUS] SHIELD: Main Thread is now COLD. Scripts released to Idle Queue.", "color:#3b82f6; font-weight:bold; background:#e0f2fe; padding:2px 5px;");
-                    
-                    // إشعار الجافا عبر الجسر (اختياري إذا أردت فتح الفلترة في shouldInterceptRequest)
-                    if (window.RoyalBridge && window.RoyalBridge.log) {
-                        window.RoyalBridge.log("NUCLEUS_STABILIZED");
+                // 🚀 تنفيذ أمر الرندرة المسبقة (لمس الـ DOM يتم هنا بأمان)
+                if (msg.type === 'EXECUTE_PRERENDER') {
+                    if (HTMLScriptElement.supports && HTMLScriptElement.supports('speculationrules')) {
+                        const script = document.createElement('script');
+                        script.type = 'speculationrules';
+                        script.textContent = JSON.stringify({
+                            prerender: [{ source: "list", urls: [msg.url] }]
+                        });
+                        document.head.appendChild(script);
+                        console.log(`⚡ [NEXUS] Prerendering Injected for: ${msg.url}`);
                     }
                 }
             };
 
-            // خوارزمية الانتظار الذكي: ننتظر خمول المتصفح (Idle) + أمان زمني
+            // 4. إنشاء قناة إرسال بيانات الحساسات (بدون استهلاك الذاكرة)
+            window.dispatchToNucleus = (type, payload) => {
+                worker.postMessage({ type, ...payload });
+            };
+
+            // 5. ربط لمسات المستخدم بالنواة المنفصلة
+            window.addEventListener('touchstart', (e) => {
+                const link = e.target.closest('a');
+                if (link && link.href) {
+                    window.dispatchToNucleus('TOUCH_START', {
+                        x: e.touches[0].clientX,
+                        y: e.touches[0].clientY,
+                        timestamp: Date.now(),
+                        url: link.href
+                    });
+                }
+            }, { passive: true }); // passive لعدم تعطيل السكرول
+
+            // [مراقب الخمول لفك خناق السكربتات يبقى كما هو لديك]
+            const triggerMaestroStabilization = () => {
+                console.log("%c🛡️ [NEXUS] SHIELD: Main Thread is now COLD.", "color:#3b82f6; font-weight:bold; background:#e0f2fe; padding:2px 5px;");
+                if (window.RoyalBridge && window.RoyalBridge.log) {
+                    window.RoyalBridge.log("NUCLEUS_STABILIZED");
+                }
+            };
+
             if ('requestIdleCallback' in window) {
-                // الخيار الاحترافي: ننتظر حتى يخبرنا المتصفح أنه "فاضي" تماماً
-                requestIdleCallback(() => {
-                    setTimeout(triggerMaestroStabilization, 1500); // نمهله 1.5 ثانية إضافية بعد أول خمول
-                }, { timeout: 4000 }); // حد أقصى 4 ثوانٍ إذا ظل الموقع ثقيلاً
+                requestIdleCallback(() => setTimeout(triggerMaestroStabilization, 1500), { timeout: 4000 });
             } else {
-                // Fallback للأجهزة القديمة
                 setTimeout(triggerMaestroStabilization, 4000);
             }
 
-            window.NexusTelemetry.endMark('WASM_IGNITION'); // ⏱️ إنهاء قياس النواة
-
-            console.log("🚀 NUCLEUS ACTIVE: Zero-Latency Fusion Complete.");
-            
-            // 📊 طباعة التقرير التلقائي بعد 2 ثانية لضمان استقرار الشاشة
+            // طباعة التقرير
             setTimeout(() => { window.NexusTelemetry.generateReport(); }, 2000);
 
         } catch (err) {
