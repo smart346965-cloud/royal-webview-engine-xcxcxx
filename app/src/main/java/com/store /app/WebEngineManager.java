@@ -231,12 +231,43 @@ public class WebEngineManager {
             @Override
             public void onPageCommitVisible(WebView view, String url) {
                 // 🚀 اللحظة الحاسمة: الكروميوم أتم عملية الرسم (Painting)
-                // لا نخفي السبلاش فوراً هنا، بل نرسل نبضة للجافا للتأكد من انقضاء الوقت الأدنى
                 if (activity != null) {
                     activity.runOnUiThread(() -> {
                         // تنفيذ الحقن الذري للنواة
                         WebEnhancer.apply(view, context);
                         
+                        // ==========================================
+                        // 👑 [التعديل هنا]: حقن درع المنطقة الآمنة لثقب الكاميرا تلقائياً
+                        // ==========================================
+                        String safeAreaGuardScript = 
+                            "(function() {" +
+                            "   if (document.getElementById('nexus-safe-area-guard')) return;" +
+                            "   let meta = document.querySelector('meta[name=\"viewport\"]');" +
+                            "   if (!meta) {" +
+                            "       meta = document.createElement('meta');" +
+                            "       meta.name = 'viewport';" +
+                            "       document.head.appendChild(meta);" +
+                            "   }" +
+                            "   if (!meta.content.includes('viewport-fit=cover')) {" +
+                            "       meta.content += ', viewport-fit=cover';" +
+                            "   }" +
+                            "   const style = document.createElement('style');" +
+                            "   style.id = 'nexus-safe-area-guard';" +
+                            "   style.textContent = `" +
+                            "       :root { --sat: env(safe-area-inset-top, 0px); }" +
+                            "       header, nav, .site-header, .main-header, [class*=\"header\"] {" +
+                            "           padding-top: max(env(safe-area-inset-top), 15px) !important;" +
+                            "       }" +
+                            "       .fixed-top, .sticky-top {" +
+                            "           top: env(safe-area-inset-top, 0px) !important;" +
+                            "       }" +
+                            "   `;" +
+                            "   document.head.appendChild(style);" +
+                            "})();";
+                        
+                        view.evaluateJavascript(safeAreaGuardScript, null);
+                        // ==========================================
+
                         // إبلاغ المدير أن البكسلات جاهزة خلف الستار
                         triggerFinalReveal();
                     });
@@ -530,4 +561,4 @@ public class WebEngineManager {
         }
         return true;
     }
-            }
+                }
