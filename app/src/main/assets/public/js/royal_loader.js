@@ -132,6 +132,24 @@
                         console.log(`⚡ [NEXUS] Prerendering Injected for: ${msg.url}`);
                     }
                 }
+
+                // 🟦 استقبال إشارة الحياة من النواة ورسم المربع الأزرق
+                if (msg.type === 'DRAW_BLUE_SQUARE') {
+                    const indicator = document.createElement('div');
+                    indicator.style.position = 'fixed';
+                    indicator.style.bottom = '20px';
+                    indicator.style.left = '20px'; // في الزاوية السفلية اليسرى
+                    indicator.style.width = '15px';
+                    indicator.style.height = '15px';
+                    indicator.style.backgroundColor = '#3b82f6'; // أزرق نيون
+                    indicator.style.borderRadius = '4px';
+                    indicator.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.8)';
+                    indicator.style.zIndex = '999999';
+                    indicator.style.pointerEvents = 'none'; // كي لا يعيق اللمس
+                    
+                    document.body.appendChild(indicator);
+                    console.log("%c🟦 [NEXUS] Indicator: C++ Worker is ALIVE and breathing!", "color:#3b82f6; font-weight:bold;");
+                }
             };
 
             // 4. إنشاء قناة إرسال بيانات الحساسات (بدون استهلاك الذاكرة)
