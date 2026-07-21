@@ -43,18 +43,18 @@ public:
     void inject_speculation_atomic(const std::string& url) {
         EM_ASM_((
             const targetUrl = UTF8ToString($0);
-            const specScript = document.createElement('script');
-            specScript.type = 'speculationrules';
-            specScript.textContent = JSON.stringify({
-                "prerender": [{
-                    "source": "list",
-                    "urls": [targetUrl],
-                    "score": 1.0,
-                    "eagerness": "immediate"
-                }]
-            });
-            document.head.appendChild(specScript);
-            console.log("🔮 NUCLEUS: Full Prerender Sequence Initiated for: " + targetUrl);
+            // إذا كنا في الـ Worker نرسل رسالة للـ Main Thread ليقوم بالحقن
+            if (typeof self !== 'undefined' && typeof document === 'undefined') {
+                self.postMessage({ type: 'EXECUTE_PRERENDER', url: targetUrl });
+            } else if (typeof document !== 'undefined') {
+                const specScript = document.createElement('script');
+                specScript.type = 'speculationrules';
+                specScript.textContent = JSON.stringify({
+                    "prerender": [{ "source": "list", "urls": [targetUrl], "score": 1.0, "eagerness": "immediate" }]
+                });
+                document.head.appendChild(specScript);
+            }
+            console.log("🔮 NUCLEUS: Full Prerender Triggered for: " + targetUrl);
         ), url.c_str());
     }
 
@@ -88,32 +88,17 @@ public:
      */
     void offload_rendering_to_gpu() {
         EM_ASM(({
+            if (typeof document === 'undefined') return; // حماية الـ Worker
             if (document.getElementById('royal-gpu-booster')) return;
             const style = document.createElement('style');
             style.id = 'royal-gpu-booster';
             style.textContent = `
-                /* إجبار محرك الكروميوم على إنشاء طبقات مستقلة (Composite Layers) */
-                body, html { 
-                    height: 100%;
-                    overflow-x: hidden;
-                    -webkit-overflow-scrolling: touch; 
-                    scroll-behavior: smooth;
-                }
-                
-                /* تحرير كرت الشاشة للعناصر التي تتحرك أثناء السكرول */
-                .royal-is-scrolling * { 
-                    pointer-events: none !important; /* تعطيل حسابات اللمس أثناء الحركة */
-                }
-
-                /* القاعدة الذهبية: إجبار الـ GPU على الرسم المسبق للمحتوى المخفي */
-                main, section, article { 
-                    transform: translateZ(0); 
-                    will-change: transform;
-                    contain: paint; /* أهم قاعدة لمنع "النتعة" عبر عزل منطقة الرسم */
-                }
+                body, html { height: 100%; overflow-x: hidden; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }
+                .royal-is-scrolling * { pointer-events: none !important; }
+                main, section, article { transform: translateZ(0); will-change: transform; contain: paint; }
             `;
             document.head.appendChild(style);
-            console.log("🌪️ NUCLEUS: GPU Rasterization Optimized & Layers Isolated.");
+            console.log("🌪️ NUCLEUS: GPU Layer Isolated.");
         }));
     }
 
@@ -123,12 +108,11 @@ public:
      */
     void precompute_page_layout() {
         EM_ASM(({
-            // استخدام الـ IntersectionObserver لتهيئة العناصر قبل وصول السكرول إليها
+            if (typeof document === 'undefined' || typeof IntersectionObserver === 'undefined') return;
             const io = new IntersectionObserver(entries => {
                 entries.forEach(e => {
-                    if (e.isIntersecting) {
-                        // إرسال نبضة للنواة لتنبيهها بأن العنصر سيظهر
-                        if (window.Nexus) window.Nexus.Ignition.set_engine_warmed(true);
+                    if (e.isIntersecting && window.Nexus) {
+                        window.Nexus.Ignition.set_engine_warmed(true);
                     }
                 });
             }, { rootMargin: '500px' });
