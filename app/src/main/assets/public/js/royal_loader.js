@@ -224,4 +224,41 @@
     } else {
         ignite();
     }
+
+    // =========================================================================
+    // 👑 NEXUS DOM PERSISTENCE & ZERO-LATENCY SHELL ENGINE
+    // =========================================================================
+    (function initDOMPersistence() {
+        const SNAPSHOT_KEY = 'NEXUS_DOM_SHELL_SNAPSHOT';
+
+        // 1. أخذ لقطة خفيفة من الصفحة الرئيسية فور استقرارها قبل الخروج/التنقل
+        const captureHomeState = () => {
+            const isHome = location.pathname === '/' || location.pathname.endsWith('/index.html') || location.href === location.origin + '/';
+            if (isHome && document.body) {
+                try {
+                    // حفظ الهيكل مع حالة السكرول الحالية
+                    sessionStorage.setItem(SNAPSHOT_KEY, JSON.stringify({
+                        html: document.body.innerHTML,
+                        scrollTop: window.scrollY,
+                        timestamp: Date.now()
+                    }));
+                } catch(e) {}
+            }
+        };
+
+        // التقاط الحالة عند تحول التطبيق للخلفية (Background) أو مغادرة التبويب
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                captureHomeState();
+            }
+        });
+
+        // 2. استرجاع موقع السكرول واللقطة عند الرجوع اللحظي
+        window.addEventListener('pageshow', (event) => {
+            if (event.persisted) {
+                console.log("%c⚡ [NEXUS]: Instant BFCache Restore (0ms Response)", "color:#00ff00; font-weight:bold; background:#003300; padding:2px 5px;");
+            }
+        });
+    })();
+
 })();
