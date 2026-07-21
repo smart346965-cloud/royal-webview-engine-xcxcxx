@@ -315,6 +315,24 @@ public class WebEngineManager {
                     }
                 }
 
+                // 👑 [محاكي النطاق الافتراضي] اعتراض ملف الـ Worker الخاص بالنواة وإرجاعه بـ MIME Type المعتمد
+                if (url.endsWith("/nexus-worker.js") || url.contains("nexus-worker.js")) {
+                    try {
+                        java.io.InputStream workerStream = context.getAssets().open("public/js/nexus-worker.js");
+                        java.util.Map<String, String> headers = new java.util.HashMap<>();
+                        headers.put("Content-Type", "application/javascript");
+                        headers.put("Access-Control-Allow-Origin", "*"); // كسر قيود CORS للسماح بالتشغيل داخل الـ Worker
+                        
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            return new WebResourceResponse("application/javascript", "UTF-8", 200, "OK", headers, workerStream);
+                        } else {
+                            return new WebResourceResponse("application/javascript", "UTF-8", workerStream);
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.e("RoyalEngine", "❌ FATAL: Failed to serve local Nexus Worker Core!", e);
+                    }
+                }
+
                 // 👑 [تصحيح أمني حاسم] حسم ملف الـ WASM المحلي وإرجاعه بـ MIME Type المعتمد عالمياً لقهر الحظر الصامت
                 if (url.endsWith("/royal_nucleus.wasm")) {
                     try {
@@ -522,4 +540,4 @@ public class WebEngineManager {
         }
         return true;
     }
-    }
+            }
