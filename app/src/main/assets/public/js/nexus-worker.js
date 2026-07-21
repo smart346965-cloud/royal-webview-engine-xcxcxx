@@ -11,6 +11,7 @@ let Maestro = null;
 let Ignition = null;
 let Core = null;
 let Network = null;
+let sharedWasmMemoryView = null;
 
 /**
  * 🚀 مرحلة الانصهار (Fusion) داخل الـ Worker
@@ -45,14 +46,20 @@ async function initNucleus() {
     }
 }
 
-/**
- * 📥 قناة استقبال النبضات (Input Stream)
- * معالجة البيانات القادمة من الحساسات (Touch/Scroll)
- */
+// [تعديل جراحي في nexus-worker.js]
 self.onmessage = function(e) {
     const data = e.data;
 
     if (!Maestro && data.type !== 'INIT') return;
+
+    // 👑 تجهيز الذاكرة الصفرية (Zero-Allocation Pool) عند الإقلاع
+    if (data.type === 'INIT_MEMORY' && window_proxy.Nexus.Core) {
+        const ptr = window_proxy.Nexus.Core.get_shared_buffer_ptr();
+        // إنشاء نافذة زجاجية فوق ذاكرة C++ للكتابة فيها مباشرة دون إنشاء كائنات
+        sharedWasmMemoryView = new Float32Array(Maestro.module.HEAPF32.buffer, ptr, 10);
+        console.log("⚡ WORKER: Zero-Allocation Memory Pool Linked.");
+        return;
+    }
 
     switch(data.type) {
         case 'INIT':
@@ -60,30 +67,28 @@ self.onmessage = function(e) {
             break;
 
         case 'TOUCH_START':
-            // تحليل النية اللحظية في خيط منفصل (0ms UI lag)
-            const willClick = window_proxy.Nexus.Predictor.analyze_pointer_intent(
-                data.x, data.y, data.timestamp
-            );
+            // 1. الكتابة المباشرة في ذاكرة C++ (Zero-Allocation)
+            if (sharedWasmMemoryView) {
+                sharedWasmMemoryView[0] = data.x;
+                sharedWasmMemoryView[1] = data.y;
+                // يمكنك إضافة Timestamp في [2] و [3]
+            }
+
+            // 2. تحليل النية
+            const willClick = window_proxy.Nexus.Predictor.analyze_pointer_intent(data.x, data.y, data.timestamp);
+            
             if (willClick) {
-                // أمر التحميل الشبحي يخرج من هنا
-                window_proxy.Nexus.Predictor.inject_speculation_atomic(data.url);
+                // 🚀 التصحيح العبقري: لا نلمس الـ DOM هنا! بل نأمر الخيط الرئيسي بذلك
+                self.postMessage({ type: 'EXECUTE_PRERENDER', url: data.url });
             }
             break;
 
         case 'SCROLL_DATA':
-            // حساب سرعة السكرول وتفعيل التنبؤ للأسفل
-            const isFast = window_proxy.Nexus.Core.analyze_scroll_velocity(
-                data.y, data.lastY, data.delta
-            );
+            const isFast = window_proxy.Nexus.Core.analyze_scroll_velocity(data.y, data.lastY, data.delta);
             if (isFast) {
-                self.postMessage({ type: 'THROTTLE_RENDER', state: true });
+                // أمر للخيط الرئيسي بإيقاف الصور مؤقتاً
+                self.postMessage({ type: 'THROTTLE_RENDER', state: true }); 
             }
-            break;
-
-        case 'NETWORK_CHECK':
-            // قرار الكاش الصارم يخرج من الـ Worker
-            const strategy = window_proxy.Nexus.Guardian.evaluate_request_strategy(data.url);
-            self.postMessage({ type: 'STRATEGY_DECISION', url: data.url, strategy: strategy });
             break;
     }
 };
