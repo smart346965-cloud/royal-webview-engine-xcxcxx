@@ -125,19 +125,15 @@ public class WebEngineManager {
         });
     }
 
-    // 👑 تعديل جراحي: فرض قيمة زمنية ثابتة للسبلاش (3 ثوانٍ بالتمام والكمال)
+    // 👑 تعديل جراحي 4: فرض قيمة زمنية ثابتة للسبلاش (7 ثوانٍ بالتمام والكمال)
     public void triggerFinalReveal() {
         if (splashChecker.isRemoved()) return;
 
-        long currentTime = System.currentTimeMillis();
-        long elapsed = currentTime - splashStartTime;
-        
-        // حساب الوقت المتبقي لإكمال 3000 ملي ثانية (3 ثوانٍ) بالضبط
-        long remaining = Math.max(0, 7000 - elapsed); 
-
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        // نستخدم الـ Runnable الأصلي markSplashRemoved لضمان عدم التكرار
+        activity.runOnUiThread(() -> {
             removeSplashSmoothly();
-        }, remaining);
+            Log.i("RoyalEngine", "👑 Fixed Time Elapsed. Releasing UI Control.");
+        });
     }
 
     // [تعديل جراحي في WebEngineManager.java]
@@ -228,21 +224,18 @@ public class WebEngineManager {
                 // ❌ تم نقل WebEnhancer.apply من هنا للسرعة
             }
 
+            // [تعديل جراحي 3 في WebEngineManager.java]
             @Override
             public void onPageCommitVisible(WebView view, String url) {
-                // 🚀 اللحظة الحاسمة: الكروميوم أتم عملية الرسم (Painting)
-                // لا نخفي السبلاش فوراً هنا، بل نرسل نبضة للجافا للتأكد من انقضاء الوقت الأدنى
+                // نقوم فقط بالحقن وتحديث الحالة، لكننا "لا نلمس" السبلاش هنا
                 if (activity != null) {
                     activity.runOnUiThread(() -> {
-                        // تنفيذ الحقن الذري للنواة
                         WebEnhancer.apply(view, context);
-                        
-                        // إبلاغ المدير أن البكسلات جاهزة خلف الستار
-                        triggerFinalReveal();
                     });
                 }
                 RoyalNetworkEngine.notifyRenderStart();
                 syncStatusBarColor(view);
+                Log.i("RoyalEngine", "🎨 Page Committed. Content is ready, but Splash is locked by timer.");
             }
 
             @Override
@@ -530,4 +523,4 @@ public class WebEngineManager {
         }
         return true;
     }
-            }
+    }
