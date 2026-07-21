@@ -108,24 +108,36 @@ public class WebEngineManager {
         });
     }
 
+    // 👑 تعديل جراحي: توحيد عملية الخروج الناعم للسبلاش
     public void removeSplashSmoothly() {
         if (activity == null || splashChecker.isRemoved()) return;
 
-        long currentTime = System.currentTimeMillis();
-        long elapsedTime = currentTime - splashStartTime;
-        long remainingTime = Math.max(0, 1800 - elapsedTime); // نضمن بقاءه 1.8 ثانية على الأقل
-
         activity.runOnUiThread(() -> {
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                if (splashOverlay != null) {
-                    splashOverlay.animate()
-                            .alpha(0f)
-                            .setDuration(400) // خروج ناعم جداً
-                            .withEndAction(this::removeSplashInstantly)
-                            .start();
-                }
-            }, remainingTime);
+            if (splashOverlay != null && splashOverlay.getAlpha() > 0f) {
+                splashOverlay.animate()
+                        .alpha(0f)
+                        .setDuration(400) // انكماش ناعم جداً للخروج
+                        .withEndAction(this::removeSplashInstantly)
+                        .start();
+            } else {
+                removeSplashInstantly();
+            }
         });
+    }
+
+    // 👑 تعديل جراحي: فرض قيمة زمنية ثابتة للسبلاش (3 ثوانٍ بالتمام والكمال)
+    public void triggerFinalReveal() {
+        if (splashChecker.isRemoved()) return;
+
+        long currentTime = System.currentTimeMillis();
+        long elapsed = currentTime - splashStartTime;
+        
+        // حساب الوقت المتبقي لإكمال 3000 ملي ثانية (3 ثوانٍ) بالضبط
+        long remaining = Math.max(0, 3000 - elapsed); 
+
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            removeSplashSmoothly();
+        }, remaining);
     }
 
     // [تعديل جراحي في WebEngineManager.java]
@@ -437,18 +449,6 @@ public class WebEngineManager {
         });
     }
 
-    // أضف هذه الدالة داخل WebEngineManager لإدارة الظهور المنسق
-    public void triggerFinalReveal() {
-        long currentTime = System.currentTimeMillis();
-        long elapsed = currentTime - splashStartTime;
-        long remaining = Math.max(0, 2500 - elapsed);
-
-        // [السر الهندسي]: انتظار الوقت الأدنى + الجاهزية البصرية
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-            removeSplashSmoothly();
-        }, remaining);
-    }
-
     private void syncStatusBarColor(WebView view) {
         if (activity == null || activity.isFinishing()) return;
 
@@ -530,4 +530,4 @@ public class WebEngineManager {
         }
         return true;
     }
-                }
+            }
