@@ -28,7 +28,7 @@ public class MainActivity extends AppCompatActivity {
     private WebView activeWebView;
     private ProgressBar progressBar;
     private long splashStartTime = 0;
-    private static final long FIXED_SPLASH_TIME = 3000; // قيمة ثابتة 3 ثوانٍ بالتمام والكمال
+    private static final long FIXED_SPLASH_TIME = 7000; // قيمة ثابتة 3 ثوانٍ بالتمام والكمال
     private boolean isPageReady = false; // flag للرندرة
 
     @Override
