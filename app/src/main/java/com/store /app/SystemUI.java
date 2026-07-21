@@ -14,7 +14,7 @@ public class SystemUI {
 
     private static boolean isApplied = false;
 
-    // 1. تفعيل وضع "التمدد الشفاف" مع حماية المحتوى من التداخل
+    // 1. تفعيل وضع "التمدد الشفاف" مع الاستجابة اللحظية لإيماءات الرجوع
     public static void applyKingMode(FragmentActivity activity, WebView webView) {
 
         if (isApplied) return;
@@ -22,7 +22,7 @@ public class SystemUI {
 
         Window window = activity.getWindow();
 
-        // Edge-to-Edge حقيقي (التمدد خلف الأشرطة)
+        // Edge-to-Edge حقيقي: جعل المحتوى يتمدد 100% خلف الأشرطة الشفافة
         WindowCompat.setDecorFitsSystemWindows(window, false);
         window.setStatusBarColor(Color.TRANSPARENT);
         window.setNavigationBarColor(Color.TRANSPARENT);
@@ -34,28 +34,24 @@ public class SystemUI {
 
         View content = activity.findViewById(android.R.id.content);
 
-        // 🔥 التعديل الجراحي: تصفير الحواف لكي يحتل التطبيق 100% من الشاشة حرفياً
+        // 🔥 تصفير الحواف لكي يحتل الـ WebView الشاشة بالكامل دون اقتطاع
         ViewCompat.setOnApplyWindowInsetsListener(content, (view, insets) -> {
             view.setPadding(0, 0, 0, 0); 
             return WindowInsetsCompat.CONSUMED;
         });
 
-        // تشغيل محرك الانغماس الذكي (الإخفاء التلقائي)
-        enableSmartImmersiveMode(window);
+        // 👑 [تعديل حاسم]: تفعيل وضع الشفافية المباشرة لضمان عمل السحب للرجوع من المرة الأولى
+        enableTransparentEdgeToEdge(window);
     }
 
-    // 🔥 ميزة الانغماس المدروسة (Immersive Mode)
-    private static void enableSmartImmersiveMode(Window window) {
+    // 👑 تحرير إيماءات الحافة (Gesture Lock Bypass)
+    private static void enableTransparentEdgeToEdge(Window window) {
         WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
         if (controller != null) {
-            // تحديد السلوك: تظهر الأشرطة بالسحب، وتكون فوق المحتوى (لا تزيحه)، ثم تختفي تلقائياً
-            controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
-
-            // تأخير زمني مدروس بامتياز (3000 ملي ثانية = 3 ثوانٍ)
-            // تظل الأشرطة ظاهرة ليطمئن المستخدم، ثم تنزلق بهدوء للاختفاء
-            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                controller.hide(WindowInsetsCompat.Type.systemBars());
-            }, 4500);
+            // نضمن إظهار الأشرطة كطبقة شفافة 100% فوق الـ WebView
+            // هذا يمنع الأندرويد من حجز السحبة الأولى، وتعمل إيماءة الرجوع فوراً!
+            controller.show(WindowInsetsCompat.Type.systemBars());
+            controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_DEFAULT);
         }
     }
 
