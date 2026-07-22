@@ -35,12 +35,15 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // 👑 [تعديل جراحي ملكي 1]: ربط سبلاش النظام بالمؤقت المنطقي لتثبيته ومنع الازدواجية
+        // 👑 [تعديل جراحي ملكي 1]: استلام التحكم بأنيميشن خروج سبلاش النظام لجعل خروجه ناعماً للغاية
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             getSplashScreen().setOnExitAnimationListener(splashScreenView -> {
-                // منع نظام أندرويد 12+ من إزالة السبلاش تلقائياً
-                // سيتم التحكم في الإزالة ناعماً عبر WebEngineManager
-                splashScreenView.remove();
+                // تنفيذ أنيميشن شفافية ناعم (Fade-Out) لسبلاش النظام لمنع الاختفاء المفاجئ
+                splashScreenView.animate()
+                        .alpha(0f)
+                        .setDuration(500) // 500 ملي ثانية لأنيميشن اختفاء سينمائي
+                        .withEndAction(splashScreenView::remove)
+                        .start();
             });
         }
 
@@ -50,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         
         super.onCreate(savedInstanceState);
 
-        // 🔍 تفعيل محرك الفحص والتشخيص الذكي (الآن سيغذي LogFox فوراً!)
+        // 🔍 تفعيل محرك الفحص والتشخيص الذكي
         try {
             RoyalPanopticon.startAwareness();
             Log.i(TAG, "RoyalPanopticon Engine: Active and running in background.");
@@ -76,27 +79,20 @@ public class MainActivity extends AppCompatActivity {
             activeWebView.loadUrl(targetUrl);
         }
 
-        // 4️⃣ نظام التحكم بالرجوع المستقل نيتف (Native Back Press Handling)
+        // 4️⃣ نظام التحكم بالرجوع المستقل نيتف
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
                 if (activeWebView != null && activeWebView.canGoBack()) {
-                    // قفل المحرك على الكاش لضمان سرعة الاستجابة
                     activeWebView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
-                    
-                    // إخفاء البروجرس بار لأنه لن يكون له داعٍ في الرجوع اللحظي
                     if (progressBar != null) progressBar.setVisibility(View.GONE);
-                    
                     activeWebView.goBack();
-                    
-                    // إعادة الضبط للوضع الافتراضي
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         if (activeWebView != null) {
                             activeWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
                         }
                     }, 1000);
                 } else {
-                    // إرسال التطبيق للخلفية بدلاً من إغلاقه بالكامل للحفاظ على الويب فيو ساخناً بالذاكرة
                     moveTaskToBack(true);
                 }
             }
@@ -110,24 +106,26 @@ public class MainActivity extends AppCompatActivity {
         setupSplashScreen();
     }
 
-    // [تعديل جراحي 3: MainActivity.java]
     private void setupSplashScreen() {
         splashStartTime = System.currentTimeMillis();
 
-        // 👑 [تسليم الراية الاحترافي]: سبلاش النظام يتنازل فوراً للسبلاش المخصص لمنع الصدمة
+        // 👑 [تعديل جراحي ملكي 2]: تجميد الشاشة حتى اكتمال الـ 5 ثوانٍ، ثم إطلاق أنيميشن الـ Fade-out
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            getSplashScreen().setOnExitAnimationListener(splashScreenView -> {
-                // إزالة سبلاش النظام بأنيميشن سريع جداً ليظهر السبلاش الاحترافي بدقة وتحته البروجرس بار
-                splashScreenView.getIconView().animate()
-                        .alpha(0f)
-                        .setDuration(150)
-                        .start();
-                splashScreenView.animate()
-                        .alpha(0f)
-                        .setDuration(200)
-                        .withEndAction(splashScreenView::remove)
-                        .start();
-            });
+            findViewById(android.R.id.content).getViewTreeObserver().addOnPreDrawListener(
+                new ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        if (splashRemoved) {
+                            // انقضت الـ 5 ثوانٍ.. نسمح للنظام بالرسم ليبدأ أنيميشن الـ Fade-Out
+                            findViewById(android.R.id.content).getViewTreeObserver().removeOnPreDrawListener(this);
+                            return true;
+                        } else {
+                            // الـ 5 ثوانٍ لم تنتهِ بعد.. جمّد الشاشة بصلابة!
+                            return false;
+                        }
+                    }
+                }
+            );
         }
 
         final FrameLayout splashContainer = new FrameLayout(this);
@@ -196,4 +194,4 @@ public class MainActivity extends AppCompatActivity {
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
-                                      }
+            }
