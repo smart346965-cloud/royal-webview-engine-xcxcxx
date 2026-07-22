@@ -1,8 +1,10 @@
 package com.store.app;
 
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.ViewTreeObserver;
 import android.webkit.WebView;
 import android.webkit.WebSettings;
 import android.widget.ProgressBar;
@@ -33,6 +35,15 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        // 👑 [تعديل جراحي ملكي 1]: ربط سبلاش النظام بالمؤقت المنطقي لتثبيته ومنع الازدواجية
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            getSplashScreen().setOnExitAnimationListener(splashScreenView -> {
+                // منع نظام أندرويد 12+ من إزالة السبلاش تلقائياً
+                // سيتم التحكم في الإزالة ناعماً عبر WebEngineManager
+                splashScreenView.remove();
+            });
+        }
+
         // 🛡️ درع الوميض: مطابقة الخلفية مع لون السبلاش لمنع الوميض الأبيض الصارخ
         setTheme(R.style.AppTheme_NoSplash);
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#F3F4F6")));
@@ -103,6 +114,25 @@ public class MainActivity extends AppCompatActivity {
     private void setupSplashScreen() {
         splashStartTime = System.currentTimeMillis();
 
+        // 👑 [تعديل جراحي ملكي 2]: إجبار نظام أندرويد 12+ على الانتظار حتى تنتهي الـ 5 ثوانٍ
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            findViewById(android.R.id.content).getViewTreeObserver().addOnPreDrawListener(
+                new ViewTreeObserver.OnPreDrawListener() {
+                    @Override
+                    public boolean onPreDraw() {
+                        if (splashRemoved) {
+                            // تم انقضاء الـ 5 ثوانٍ.. اصرف السبلاش فوراً
+                            findViewById(android.R.id.content).getViewTreeObserver().removeOnPreDrawListener(this);
+                            return true;
+                        } else {
+                            // الـ 5 ثوانٍ لم تنتهِ بعد.. جمّد سبلاش النظام على الشاشة!
+                            return false;
+                        }
+                    }
+                }
+            );
+        }
+
         final FrameLayout splashContainer = new FrameLayout(this);
         splashContainer.setBackgroundColor(Color.parseColor("#F3F4F6"));
         
@@ -126,18 +156,17 @@ public class MainActivity extends AppCompatActivity {
         engineManager.setSplashStartTime(splashStartTime); 
         engineManager.init();
 
-        // 🚀 التعديل الحاسم: هذا هو الـ Handler الوحيد الذي سيتحكم في المصير
+        // 🚀 الـ Handler المعتمد للـ 5 ثوانٍ
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (!splashRemoved) {
                 engineManager.triggerFinalReveal();
             }
         }, FIXED_SPLASH_TIME);
 
-        // 🛡️ تم تعطيل استجابة الجسر (Bridge Callback) لحذف السبلاش لكي لا يكسر التوقيت
+        // 🛡️ تعطيل الاستجابة التلقائية للجسور
         if (RoyalWebViewHost.getBridge() != null) {
             RoyalWebViewHost.getBridge().setOnHideSplashCallback(() -> {
                 Log.i(TAG, "⚡ Page ready, but Splash is LOCKED by engineer's timer.");
-                // لا نفعل شيئاً هنا.. ننتظر الـ FIXED_SPLASH_TIME
             });
         }
     }
@@ -170,4 +199,4 @@ public class MainActivity extends AppCompatActivity {
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
-                                }
+    }
