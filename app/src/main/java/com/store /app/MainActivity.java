@@ -114,23 +114,20 @@ public class MainActivity extends AppCompatActivity {
     private void setupSplashScreen() {
         splashStartTime = System.currentTimeMillis();
 
-        // 👑 [تعديل جراحي ملكي 2]: إجبار نظام أندرويد 12+ على الانتظار حتى تنتهي الـ 5 ثوانٍ
+        // 👑 [تسليم الراية الاحترافي]: سبلاش النظام يتنازل فوراً للسبلاش المخصص لمنع الصدمة
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            findViewById(android.R.id.content).getViewTreeObserver().addOnPreDrawListener(
-                new ViewTreeObserver.OnPreDrawListener() {
-                    @Override
-                    public boolean onPreDraw() {
-                        if (splashRemoved) {
-                            // تم انقضاء الـ 5 ثوانٍ.. اصرف السبلاش فوراً
-                            findViewById(android.R.id.content).getViewTreeObserver().removeOnPreDrawListener(this);
-                            return true;
-                        } else {
-                            // الـ 5 ثوانٍ لم تنتهِ بعد.. جمّد سبلاش النظام على الشاشة!
-                            return false;
-                        }
-                    }
-                }
-            );
+            getSplashScreen().setOnExitAnimationListener(splashScreenView -> {
+                // إزالة سبلاش النظام بأنيميشن سريع جداً ليظهر السبلاش الاحترافي بدقة وتحته البروجرس بار
+                splashScreenView.getIconView().animate()
+                        .alpha(0f)
+                        .setDuration(150)
+                        .start();
+                splashScreenView.animate()
+                        .alpha(0f)
+                        .setDuration(200)
+                        .withEndAction(splashScreenView::remove)
+                        .start();
+            });
         }
 
         final FrameLayout splashContainer = new FrameLayout(this);
@@ -199,4 +196,4 @@ public class MainActivity extends AppCompatActivity {
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
-    }
+                                      }
