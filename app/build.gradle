@@ -17,6 +17,12 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
+        
+        // 👑 استقبال الرابط القادم من GitHub Actions (أو وضع رابط افتراضي لحماية البناء المحلي)
+        def targetUrl = project.hasProperty('CLIENT_URL') ? project.property('CLIENT_URL') : "https://bellroy.com/"
+        
+        // 🚀 حقن الرابط مباشرة في قلب كود التطبيق كمتغير ثابت (Constant)
+        buildConfigField "String", "CLIENT_URL", "\"${targetUrl}\""
     }
 
     buildTypes {
