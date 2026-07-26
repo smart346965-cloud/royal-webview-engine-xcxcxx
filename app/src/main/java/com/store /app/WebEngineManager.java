@@ -151,8 +151,8 @@ public class WebEngineManager {
         // 3. تحرير طاقة المعالج الرسومي (GPU Unbound)
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         
-        // 👑 4. قفل أبعاد الصفحة (NORMAL) لمنع إعادة الرسم العشوائي وحماية الـ OffscreenPreRaster
-        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
+        // 4. تعطيل تأخير النقر (300ms delay) برمجياً
+        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.TEXT_AUTOSIZING);
 
         // 5. تفعيل ميزة الـ "Scroll Buffering" لضمان سلاسة Kiwi
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -540,4 +540,5 @@ public class WebEngineManager {
         }
         return true;
     }
-                                             }
+            }
+
