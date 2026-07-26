@@ -1,9 +1,14 @@
 name: Royal Cloud Factory 👑
 
 on:
-  workflow_dispatch: # 👑 لتفعيل زر البناء اليدوي (Run workflow) داخل جيت هاب
+  workflow_dispatch: # 👑 زر البناء اليدوي للتجارب
+    inputs:
+      test_url:
+        description: 'رابط الموقع للتجربة اليدوية (يُستخدم فقط عند البناء اليدوي)'
+        required: true
+        default: 'https://bellroy.com/'
   repository_dispatch:
-    types: [build_app] # 🚀 يظل مفتوحاً للـ Worker لإطلاق المصنع سحابياً عند طلب العميل
+    types: [build_app] # 🚀 يظل مفتوحاً للـ Worker لإطلاق المصنع سحابياً
 
 jobs:
   build:
@@ -64,11 +69,16 @@ jobs:
 
       - name: Build Signed APK & AAB 👑
         run: |
+          # 👑 التقاط الرابط بذكاء: إما من الوركر (client_payload) أو من الإدخال اليدوي للتجارب (inputs)
+          INJECTED_URL="${{ github.event.client_payload.url || github.event.inputs.test_url }}"
+          echo "🔥 Injecting Target URL: $INJECTED_URL into the App Core..."
+
           ./gradlew assembleRelease bundleRelease \
             -Pandroid.injected.signing.store.file=$(pwd)/release-key.jks \
             -Pandroid.injected.signing.store.password=${{ env.KEYSTORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ env.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ env.KEY_PASSWORD }}
+            -Pandroid.injected.signing.key.password=${{ env.KEY_PASSWORD }} \
+            -PCLIENT_URL="$INJECTED_URL" # 👈 تمرير الرابط إلى محرك بناء الأندرويد
 
       - name: Extract Real SHA256 Fingerprint 🔐
         id: cert_info
