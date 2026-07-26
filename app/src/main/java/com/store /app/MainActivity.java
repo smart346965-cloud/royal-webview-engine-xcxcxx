@@ -74,8 +74,11 @@ public class MainActivity extends AppCompatActivity {
         setContentView(activeWebView);
 
         // 3️⃣ توجيه المحرك للهدف
-        String targetUrl = "https://bellroy.com/"; 
+        // 👑 استدعاء الرابط المحقون ديناميكياً من نظام Nexus السحابي عبر BuildConfig
+        String targetUrl = BuildConfig.CLIENT_URL; 
+        
         if (activeWebView.getUrl() == null || !activeWebView.getUrl().startsWith("http")) {
+            Log.i(TAG, "🚀 Royal Engine Booting Target: " + targetUrl);
             activeWebView.loadUrl(targetUrl);
         }
 
@@ -194,4 +197,4 @@ public class MainActivity extends AppCompatActivity {
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
-            }
+    }
