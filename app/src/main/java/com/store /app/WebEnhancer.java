@@ -56,20 +56,28 @@ public final class WebEnhancer {
         StringBuilder payload = new StringBuilder(131072); // توسيع الذاكرة لـ 128KB
         payload.append("(function(){\ntry{\n");
 
+        // 👑 [تعديل جراحي ملكي]: حقن درع الرندرة الصلب (CSS GPU Shield) في رأس الصفحة برمجياً
+        payload.append("var royalShield = document.createElement('style');\n");
+        payload.append("royalShield.textContent = `\n");
+        payload.append("html, body { will-change: transform, opacity; -webkit-backface-visibility: hidden; backface-visibility: hidden; -webkit-transform: translateZ(0); transform: translateZ(0); contain: layout style paint; }\n");
+        payload.append("img, iframe, svg, canvas { content-visibility: auto; }\n");
+        payload.append("`;\n");
+        payload.append("if(document.head) document.head.appendChild(royalShield);\n\n");
+
         for (String path : scripts) {
             appendScript(payload, context, path);
         }
 
-        // 👑 التعديل: إضافة إشارة الجاهزية (Handshake) في نهاية السكربت
+        // 👑 إضافة إشارة الجاهزية (Handshake) في نهاية السكربت
         payload.append("\n/* 🏁 Handshake Signal */\n");
         payload.append("if (window.RoyalBridge) { window.RoyalBridge.hideSplash(); }\n");
-        payload.append("\n}catch(e){console.error(e);}\n})();");
+        payload.append("\n}catch(e){console.error('Royal Preload Error:', e);}\n})();");
 
         cachedPayload = payload.toString();
 
         preloaded = true;
 
-        Log.i(TAG, "🔥 JS Engine Preloaded Into RAM");
+        Log.i(TAG, "🔥 JS Engine & GPU Solid Shield Preloaded Into RAM");
     }
 
     /**
@@ -119,4 +127,4 @@ public final class WebEnhancer {
     }
 
     private WebEnhancer() {}
-                  }
+            }
