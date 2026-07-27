@@ -441,16 +441,35 @@ public class WebEngineManager {
                     return true; // تم التعامل معه بنجاح، لا تفتح كروم
                 }
 
-                // 2. قفل الحصن: إذا كان الرابط http أو https
+                // 2. قفل الحصن والمحرك الذكي للروابط (Smart Deep-Link Engine)
                 if (scheme != null && (scheme.equals("http") || scheme.equals("https"))) {
-                    // التحقق من الأصل (Origin)
                     if (isSameOrigin(uri)) {
-                        // نفس الموقع -> افتحه داخل الويب فيو فوراً
-                        return false; 
+                        return false; // نفس النطاق -> يفتح داخلياً بسلاسة وبدون تدخل
                     } else {
-                        // موقع خارجي -> افتحه داخل الويب فيو أيضاً (لمنع الهروب لكروم) 
-                        // إلا إذا كنت تريد منع المستخدم من الخروج من متجرك نهائياً
-                        view.loadUrl(url);
+                        try {
+                            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                            android.content.pm.ResolveInfo resolveInfo = context.getPackageManager().resolveActivity(intent, 0);
+                            
+                            // التحقق: هل النظام سيفتح المتصفح أم التطبيق الأصلي المعني؟
+                            if (resolveInfo != null) {
+                                String pkgName = resolveInfo.activityInfo.packageName.toLowerCase();
+                                // إذا كان المستجيب متصفحاً خارجياً أو واجهة اختيار النظام
+                                if (pkgName.equals("android") || pkgName.contains("chrome") || pkgName.contains("browser") || pkgName.contains("opera") || pkgName.contains("miui") || pkgName.contains("sec.android.app.sbrowser")) {
+                                    // نمنع الخروج للمتصفح الخارجي ونفتحه كصفحة داخلية في تطبيقنا
+                                    view.loadUrl(url);
+                                } else {
+                                    // 🚀 النصر! وجدنا التطبيق الأصلي (يوتيوب، واتساب، انستقرام...) -> نفتحه فوراً
+                                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    context.startActivity(intent);
+                                }
+                            } else {
+                                // لا يوجد أي تطبيق يمكنه التعامل مع الرابط -> نفتحه كصفحة داخلية
+                                view.loadUrl(url);
+                            }
+                        } catch (Exception e) {
+                            // 🛡️ في حال حدوث أي استثناء أمني، الحماية القصوى هي الفتح الداخلي
+                            view.loadUrl(url);
+                        }
                         return true;
                     }
                 }
@@ -584,4 +603,4 @@ public class WebEngineManager {
 
         return false; // الروابط الداخلية تمر بسلام لنواتنا
     }
-    }
+            }
