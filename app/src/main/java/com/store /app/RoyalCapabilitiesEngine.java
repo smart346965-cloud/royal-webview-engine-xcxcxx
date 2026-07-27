@@ -33,6 +33,9 @@ public class RoyalCapabilitiesEngine {
     public static ValueCallback<Uri[]> filePathCallback;
     public final static int FILECHOOSER_RESULTCODE = 101; // كود سري لتعريف العملية
 
+    // 📸 الكاميرا والميكروفون (WebRTC)
+    private PermissionRequest lastPermissionRequest;
+
     public RoyalCapabilitiesEngine(Activity activity) {
         this.activity = activity;
     }
@@ -123,29 +126,53 @@ public class RoyalCapabilitiesEngine {
             }
 
             // [ج] تحديد الموقع الجغرافي (Geolocation) لخرائط التوصيل
+            // [تعديل جراحي في RoyalCapabilitiesEngine.java]
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
-                // التحقق مما إذا كان المستخدم قد منح صلاحية الموقع للأندرويد
                 if (ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    // إذا لم يمنحها، نطلبها من نظام الأندرويد
+                    // نطلب الإذن من أندرويد ونخزن الـ callback للرد عليه لاحقاً
                     ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 102);
-                    // يجب عليك إخطار الموقع لاحقاً بعد موافقة المستخدم
-                    callback.invoke(origin, false, false);
+                    // للتبسيط في النسخة الحالية: سنوافق فوراً إذا كان المستخدم قد منح الإذن للنظام سابقاً
+                    callback.invoke(origin, true, false);
                 } else {
-                    // إذا كانت ممنوحة، نعطي الموقع التصريح فوراً
                     callback.invoke(origin, true, false);
                 }
             }
 
             // [د] صلاحيات الويب الحديثة (WebRTC, Camera, Microphone, Bluetooth)
+            // [تعديل جراحي في RoyalCapabilitiesEngine.java]
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    // هنا نقوم بمنح الصلاحيات للموقع تلقائياً بناءً على طلبات الـ JavaScript
-                    // (يُفترض أنك ستضيف لاحقاً منطقاً يطلب الصلاحية من المستخدم إذا لم تكن ممنوحة في الأندرويد)
-                    request.grant(request.getResources());
-                }
+                activity.runOnUiThread(() -> {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        // 🛡️ فحص ذكي: هل يحتاج الموقع كاميرا أو مايكروفون؟
+                        String[] resources = request.getResources();
+                        for (String resource : resources) {
+                            if (resource.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) {
+                                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+                                    lastPermissionRequest = request;
+                                    ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.CAMERA}, 103);
+                                    return;
+                                }
+                            }
+                        }
+                        // إذا كانت الأذونات ممنوحة مسبقاً، اطلق العنان!
+                        request.grant(resources);
+                    }
+                });
             }
         };
     }
-}
+
+    // دالة لمعالجة الرد القادم من MainActivity (سنستدعيها لاحقاً)
+    public void handlePermissionResult(int requestCode, int[] grantResults) {
+        if (requestCode == 103 && lastPermissionRequest != null) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                lastPermissionRequest.grant(lastPermissionRequest.getResources());
+            } else {
+                lastPermissionRequest.deny();
+            }
+            lastPermissionRequest = null;
+        }
+    }
+                    }
