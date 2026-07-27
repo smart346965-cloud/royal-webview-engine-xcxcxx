@@ -234,4 +234,17 @@ public class MainActivity extends AppCompatActivity {
             RoyalCapabilitiesEngine.filePathCallback = null;
         }
     }
-            }
+
+    // [تعديل جراحي في MainActivity.java - جسر الصلاحيات]
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        
+        // 🛡️ تمرير نتيجة موافقة المستخدم إلى محرك القدرات
+        if (engineManager != null && engineManager.getCapabilitiesHandler() != null) {
+            // إذا كنت تستخدم اسم الكلاس من المهندس (RoyalCapabilitiesEngine)
+            // تأكد من إضافة دالة getCapabilitiesHandler() في WebEngineManager
+            engineManager.getCapabilitiesHandler().handlePermissionResult(requestCode, grantResults);
+        }
+    }
+    }
