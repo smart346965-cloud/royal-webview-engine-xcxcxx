@@ -5,6 +5,38 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
+    <!-- 👑 [تصاريح Nexus الجراحية]: تمكين قدرات العتاد الكاملة للمتاجر والتطبيقات -->
+    
+    <!-- 1. نظام الملفات والتحميل (مع توافقية الأندرويد الحديث) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="29" />
+    
+    <!-- 2. الكاميرا والمايكروفون (للـ WebRTC ومسح الباركود والرسائل الصوتية) -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    
+    <!-- 3. الموقع الجغرافي (لخرائط التوصيل وتتبع المناديب) -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    
+    <!-- 4. الاتصال الخارجي (بلوتوث للطابعات الحرارية، و NFC للدفع) -->
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.NFC" />
+    
+    <!-- 5. المستشعرات وقفل الشاشة (لمنع انطفاء الشاشة أثناء التوصيل أو تشغيل الفيديو) -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- 🛡️ [إعلان الميزات كعناصر اختيارية]: 
+         هذا الجزء حاسم جداً لمنع متجر جوجل بلاي من حظر تطبيقك عن الأجهزة التي لا تملك بلوتوث أو NFC -->
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
+    <uses-feature android:name="android.hardware.bluetooth" android:required="false" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+
     <application
         android:name=".RoyalApplication"
         android:allowBackup="false" 
