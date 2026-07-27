@@ -67,6 +67,12 @@ public class WebEngineManager {
         this.capabilitiesEngine = new RoyalCapabilitiesEngine(this.activity);
     }
 
+    // 👑 ----------------- أضف هذا الكود هنا ----------------- 👑
+    public RoyalCapabilitiesEngine getCapabilitiesHandler() {
+        return this.capabilitiesEngine;
+    }
+    // --------------------------------------------------------
+
     public void setSplashStartTime(long startTime) {
         this.splashStartTime = startTime;
     }
@@ -578,4 +584,4 @@ public class WebEngineManager {
 
         return false; // الروابط الداخلية تمر بسلام لنواتنا
     }
-                }
+    }
