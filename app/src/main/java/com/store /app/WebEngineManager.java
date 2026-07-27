@@ -529,28 +529,53 @@ public class WebEngineManager {
         return scheme.equals(trustedScheme) && host.equalsIgnoreCase(trustedHost) && port == trustedPort;
     }
 
+    // [تعديل جراحي في WebEngineManager.java - محرك الروابط العميقة]
     private boolean handleUriLogic(Uri uri, boolean isMainFrame) {
-        if (!isMainFrame) return false;
-        String scheme = uri.getScheme();
-        if (scheme == null) return true;
-
-        if (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("whatsapp") || scheme.equals("intent")) {
+        String url = uri.toString();
+        
+        // 1. معالجة البروتوكولات القياسية (اتصال، إيميل، رسائل)
+        if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:") || url.startsWith("whatsapp:")) {
             try {
-                context.startActivity(new Intent(Intent.ACTION_VIEW, uri));
-            } catch (Exception ignored) {}
-            return true;
-        }
-
-        if (scheme.equals("https") || scheme.equals("http")) {
-            if (isSameOrigin(uri)) {
-                return false;
-            } else {
-                try {
-                    context.startActivity(new Intent(Intent.ACTION_VIEW, uri));
-                } catch (Exception ignored) {}
+                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
                 return true;
+            } catch (Exception e) {
+                return true; // منع الويب فيو من محاولة فتحه كصفحة
             }
         }
-        return true;
+
+        // 2. المحرك العبقري للروابط المعقدة (Intents) مثل Instagram و Facebook
+        if (url.startsWith("intent://")) {
+            try {
+                Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+                if (intent != null) {
+                    // محاولة تشغيل التطبيق الأصلي
+                    if (context.getPackageManager().resolveActivity(intent, 0) != null) {
+                        context.startActivity(intent);
+                        return true;
+                    }
+                    // Fallback: إذا لم يكن التطبيق مثبتاً، نفتح رابط المتجر
+                    String fallbackUrl = intent.getStringExtra("browser_fallback_url");
+                    if (fallbackUrl != null) {
+                        webView.loadUrl(fallbackUrl);
+                        return true;
+                    }
+                }
+            } catch (Exception e) {
+                Log.e("RoyalEngine", "Intent parsing failed", e);
+            }
+        }
+
+        // 3. فتح المواقع الخارجية (غير الدومين الموثوق) في المتصفح الخارجي لضمان الأمان
+        if (!isSameOrigin(uri) && isMainFrame) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                context.startActivity(intent);
+                return true;
+            } catch (Exception ignored) {}
+        }
+
+        return false; // الروابط الداخلية تمر بسلام لنواتنا
     }
-                                      }
+                }
