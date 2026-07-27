@@ -214,6 +214,18 @@ public class WebEngineManager {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSupportMultipleWindows(false);
         settings.setSupportZoom(false);
+
+        // 👑 [تعديل جراحي]: تفعيل ملفات تعريف الارتباط للطرف الثالث
+        // (حاسم جداً لعمل بوابات الدفع مثل Stripe وتسجيل الدخول بـ Google/Facebook)
+        CookieManager cookieManager = CookieManager.getInstance();
+        cookieManager.setAcceptCookie(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            cookieManager.setAcceptThirdPartyCookies(webView, true);
+        }
+        
+        // 👑 [تعديل جراحي]: تفعيل التخزين المؤقت للـ DOM (ضروري لـ IndexedDB و Offline Mode)
+        settings.setDomStorageEnabled(true);
+        settings.setDatabaseEnabled(true);
     }
 
     private void attachClients() {
@@ -541,4 +553,4 @@ public class WebEngineManager {
         }
         return true;
     }
-            }
+                                      }
