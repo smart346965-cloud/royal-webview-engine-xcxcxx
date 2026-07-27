@@ -39,6 +39,8 @@ public class WebEngineManager {
 
     private long splashStartTime = 0;
 
+    private final RoyalCapabilitiesEngine capabilitiesEngine;
+
     public interface SplashStateChecker {
         boolean isRemoved();
     }
@@ -60,6 +62,9 @@ public class WebEngineManager {
         this.activity = (context instanceof android.app.Activity)
                 ? (android.app.Activity) context
                 : null;
+
+        // 👑 السطر الجديد: تهيئة محرك الإمكانيات
+        this.capabilitiesEngine = new RoyalCapabilitiesEngine(this.activity);
     }
 
     public void setSplashStartTime(long startTime) {
@@ -191,6 +196,11 @@ public class WebEngineManager {
         // 👑 السماح للموارد المحلية بالاتصال ببعضها لتخطي قيود الـ CORS داخل الكاش
         settings.setAllowFileAccessFromFileURLs(true);
         settings.setAllowUniversalAccessFromFileURLs(true);
+
+        // 👑 السماح بتشغيل الفيديو وملفات الصوت برمجياً (مهم جداً للإضافات)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
+            settings.setMediaPlaybackRequiresUserGesture(false);
+        }
 
         if (WebViewFeature.isFeatureSupported(
                 WebViewFeature.ALGORITHMIC_DARKENING)) {
@@ -442,21 +452,12 @@ public class WebEngineManager {
             }
         });
 
-        webView.setWebChromeClient(new WebChromeClient() {
-            @Override
-            public void onProgressChanged(WebView view, int newProgress) {
-                progressBar.setProgress(newProgress);
-                if (newProgress == 100) {
-                    progressBar.animate()
-                            .alpha(0f)
-                            .setDuration(150)
-                            .withEndAction(() -> progressBar.setVisibility(View.GONE))
-                            .start();
-                } else {
-                    progressBar.setAlpha(1f);
-                }
-            }
-        });
+        // 👑 تعديل جراحي: استخدام المحرك المنفصل بدلاً من الكود المزدحم
+        // هذا السطر يربط شريط التحميل، ورفع الملفات، والكاميرا، وصلاحيات الويب دفعة واحدة!
+        webView.setWebChromeClient(capabilitiesEngine.buildChromeClient(progressBar));
+
+        // 👑 تعديل جراحي: تفعيل محرك التحميلات لملفات PDF والصور
+        capabilitiesEngine.attachDownloadManager(webView);
     }
 
     private void syncStatusBarColor(WebView view) {
@@ -541,4 +542,3 @@ public class WebEngineManager {
         return true;
     }
             }
-
