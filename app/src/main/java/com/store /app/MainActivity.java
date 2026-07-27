@@ -197,4 +197,41 @@ public class MainActivity extends AppCompatActivity {
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
+
+    // 👑 [تعديل جراحي]: الجسر المفقود لاستقبال نتائج الاستوديو ومدير الملفات
+    // هذه الدالة تلتقط الملف/الصورة التي اختارها المستخدم وتعيدها مباشرة إلى محرك الويب
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == RoyalCapabilitiesEngine.FILECHOOSER_RESULTCODE) {
+            if (RoyalCapabilitiesEngine.filePathCallback == null) return;
+
+            android.net.Uri[] results = null;
+
+            // التحقق من أن المستخدم اختار ملفاً بالفعل ولم يتراجع
+            if (resultCode == android.app.Activity.RESULT_OK) {
+                if (data != null) {
+                    String dataString = data.getDataString();
+                    android.content.ClipData clipData = data.getClipData();
+
+                    // دعم رفع ملفات متعددة (Multiple Files Upload)
+                    if (clipData != null) {
+                        results = new android.net.Uri[clipData.getItemCount()];
+                        for (int i = 0; i < clipData.getItemCount(); i++) {
+                            results[i] = clipData.getItemAt(i).getUri();
+                        }
+                    } 
+                    // دعم رفع ملف واحد
+                    else if (dataString != null) {
+                        results = new android.net.Uri[]{android.net.Uri.parse(dataString)};
+                    }
+                }
+            }
+
+            // إرسال النتيجة إلى الويب فيو (سواء كانت ملفات أو null إذا ألغى المستخدم)
+            RoyalCapabilitiesEngine.filePathCallback.onReceiveValue(results);
+            RoyalCapabilitiesEngine.filePathCallback = null;
+        }
     }
+            }
