@@ -452,133 +452,52 @@ public class WebEngineManager {
         }
 
         String scheme = uri.getScheme();
-        String host = uri.getHost();
-
         if (scheme == null) {
             return false;
         }
 
         scheme = scheme.toLowerCase();
 
-        if (host != null) {
-            host = host.toLowerCase();
-        }
-
-        // --------------------------------------------------
-        // 1) جميع روابط الموقع تعمل داخل التطبيق
-        // --------------------------------------------------
+        // =====================================================
+        // 1) روابط الموقع نفسه
+        // =====================================================
 
         if (isSameOrigin(uri)) {
             return false;
         }
 
-        // --------------------------------------------------
-        // 2) tel:
-        // --------------------------------------------------
+        // =====================================================
+        // 2) بروتوكولات النظام
+        // =====================================================
 
-        if (scheme.equals("tel")) {
-            return launchExternal(uri);
+        switch (scheme) {
+
+            case "tel":
+            case "mailto":
+            case "sms":
+            case "smsto":
+            case "geo":
+            case "market":
+            case "intent":
+            case "whatsapp":
+                return launchExternal(uri);
         }
 
-        // --------------------------------------------------
-        // 3) mailto:
-        // --------------------------------------------------
+        // =====================================================
+        // 3) أي رابط ويب HTTP/HTTPS
+        // يبقى داخل التطبيق
+        // =====================================================
 
-        if (scheme.equals("mailto")) {
-            return launchExternal(uri);
+        if ("http".equals(scheme) || "https".equals(scheme)) {
+            return false;
         }
 
-        // --------------------------------------------------
-        // 4) Gmail Intent
-        // --------------------------------------------------
+        // =====================================================
+        // 4) أي بروتوكول غير معروف
+        // نحاول فتحه خارج التطبيق
+        // =====================================================
 
-        if (scheme.equals("googlegmail")) {
-            return launchExternal(uri);
-        }
-
-        // --------------------------------------------------
-        // 5) WhatsApp
-        // --------------------------------------------------
-
-        if (scheme.equals("whatsapp")) {
-            return launchExternal(uri);
-        }
-
-        if (host != null) {
-
-            if (host.contains("wa.me")
-                    || host.contains("api.whatsapp.com")) {
-
-                return launchExternal(uri);
-            }
-
-            // Telegram
-
-            if (host.contains("t.me")
-                    || host.contains("telegram.me")) {
-
-                return launchExternal(uri);
-            }
-
-            // Instagram
-
-            if (host.contains("instagram.com")) {
-
-                return launchExternal(uri);
-            }
-
-            // Facebook
-
-            if (host.contains("facebook.com")
-                    || host.contains("fb.com")
-                    || host.contains("fb.me")) {
-
-                return launchExternal(uri);
-            }
-
-            // Twitter / X
-
-            if (host.contains("twitter.com")
-                    || host.contains("x.com")) {
-
-                return launchExternal(uri);
-            }
-
-            // YouTube
-
-            if (host.contains("youtube.com")
-                    || host.contains("youtu.be")) {
-
-                return launchExternal(uri);
-            }
-
-            // Snapchat
-
-            if (host.contains("snapchat.com")) {
-
-                return launchExternal(uri);
-            }
-
-            // TikTok
-
-            if (host.contains("tiktok.com")) {
-
-                return launchExternal(uri);
-            }
-
-            // Gmail
-
-            if (host.contains("mail.google.com")) {
-
-                return launchExternal(uri);
-            }
-        }
-
-        // --------------------------------------------------
-        // 6) أي رابط آخر يبقى داخل التطبيق
-        // --------------------------------------------------
-
-        return false;
+        return launchExternal(uri);
     }
 
     private boolean launchExternal(Uri uri) {
@@ -586,6 +505,8 @@ public class WebEngineManager {
         try {
 
             Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+
+            intent.addCategory(Intent.CATEGORY_BROWSABLE);
 
             intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 
@@ -595,12 +516,18 @@ public class WebEngineManager {
 
                 context.startActivity(intent);
 
-                return true;
+            } else {
+
+                Log.w("RoyalEngine",
+                        "No Activity found for: " + uri);
+
             }
 
         } catch (Exception e) {
 
-            Log.e("RoyalEngine", "Failed to launch external app", e);
+            Log.e("RoyalEngine",
+                    "External launch failed",
+                    e);
 
         }
 
@@ -685,7 +612,17 @@ public class WebEngineManager {
 
         String trusted = trustedHost.toLowerCase();
 
-        return targetHost.equals(trusted)
-                || targetHost.endsWith("." + trusted);
+        String targetScheme = uri.getScheme();
+
+        int port = uri.getPort();
+
+        if (port == -1) {
+            port = "https".equals(targetScheme) ? 443 : 80;
+        }
+
+        return trusted.equalsIgnoreCase(targetHost)
+                || targetHost.endsWith("." + trusted)
+                && trustedScheme.equalsIgnoreCase(targetScheme)
+                && trustedPort == port;
     }
-    }
+                }
