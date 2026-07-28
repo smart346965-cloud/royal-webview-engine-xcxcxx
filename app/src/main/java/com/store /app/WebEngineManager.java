@@ -439,50 +439,75 @@ public class WebEngineManager {
         capabilitiesEngine.attachDownloadManager(webView);
     }
 
-    // [تعديل جراحي في WebEngineManager.java - توحيد المحرك]
+    // [تعديل جراحي في WebEngineManager.java - محرك الروابط السيادي V2]
     private boolean handleUriLogic(Uri uri, boolean isMainFrame) {
+        if (uri == null) return false;
+        
         String url = uri.toString();
         String scheme = uri.getScheme();
 
-        // 1. روابط البروتوكولات الخاصة (واتساب، اتصال، إيميل، تيليجرام)
-        if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") || url.startsWith("tg:") || url.startsWith("intent:")) {
+        // 1. القفل المطلق: إذا كان الرابط ينتمي لنفس النطاق، امنع أي تفكير في الخروج
+        if (isSameOrigin(uri)) {
+            return false; // نترك السيطرة للـ WebView ولنظام الكاش WASM
+        }
+
+        // 2. معالجة البروتوكولات غير الويب (واتساب، اتصال، إلخ)
+        if (scheme != null && !scheme.startsWith("http")) {
             try {
                 Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(intent);
-                return true;
+                
+                if (context.getPackageManager().resolveActivity(intent, 0) != null) {
+                    applyNativeExitTransition(); // 🚀 تطبيق الأنيميشن الحريري قبل الخروج
+                    context.startActivity(intent);
+                    return true;
+                }
+                
+                // Fallback إذا لم يثبت التطبيق
+                String fallbackUrl = intent.getStringExtra("browser_fallback_url");
+                if (fallbackUrl != null) {
+                    webView.loadUrl(fallbackUrl);
+                    return true;
+                }
             } catch (Exception e) {
-                // إذا لم يجد التطبيق، وكان هناك رابط ويب بديل (Fallback)
-                try {
-                    String fallbackUrl = Intent.parseUri(url, Intent.URI_INTENT_SCHEME).getStringExtra("browser_fallback_url");
-                    if (fallbackUrl != null) {
-                        webView.loadUrl(fallbackUrl);
-                        return true;
-                    }
-                } catch (Exception ignored) {}
-                return true; 
+                Log.e("RoyalEngine", "Intent error", e);
             }
+            return true; 
         }
 
-        // 2. معالجة روابط الشبكات الاجتماعية (Instagram, Facebook, YouTube)
-        if (scheme != null && (scheme.equals("http") || scheme.equals("https"))) {
-            if (isSameOrigin(uri)) {
-                return false; // الرابط داخلي للمتجر -> افتحه بسلاسة
-            } else {
-                // رابط خارجي (مثل إنستقرام المتجر)
-                try {
-                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                    // محاولة فتح التطبيق مباشرة بدون Chooser مزعج
-                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                    context.startActivity(intent);
-                    return true; // نجح الفتح في التطبيق الخارجي
-                } catch (Exception e) {
-                    // 🚀 النصر: التطبيق غير مثبت -> افتحه داخل تطبيقنا كصفحة ويب عادية
-                    return false; 
+        // 3. معالجة روابط الويب الخارجية (Social Media)
+        if (isMainFrame && scheme != null && (scheme.equals("http") || scheme.equals("https"))) {
+            try {
+                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                
+                // فحص هل يوجد تطبيق أصلي (مثل تطبيق فيسبوك) بدلاً من المتصفح
+                android.content.pm.ResolveInfo resolveInfo = context.getPackageManager().resolveActivity(intent, 0);
+                if (resolveInfo != null) {
+                    String pkgName = resolveInfo.activityInfo.packageName.toLowerCase();
+                    // إذا كان المستجيب ليس كروم أو متصفح النظام
+                    if (!pkgName.contains("chrome") && !pkgName.contains("browser") && !pkgName.equals("android")) {
+                        applyNativeExitTransition(); // 🚀 أنيميشن الخروج
+                        context.startActivity(intent);
+                        return true;
+                    }
                 }
-            }
+            } catch (Exception ignored) {}
         }
-        return false;
+
+        // أي رابط خارجي لم نجد له تطبيقاً، نفتحه داخلياً للحفاظ على بقاء المستخدم
+        return false; 
+    }
+
+    // [إضافة جراحية: محرك أنيميشن الانتقال]
+    private void applyNativeExitTransition() {
+        if (activity != null) {
+            activity.runOnUiThread(() -> {
+                // تنفيذ أنيميشن "الانزلاق لأسفل" أو "التلاشي" الاحترافي
+                // هذا يمنع الومضة البيضاء التي تظهر عند تبديل العمليات في أندرويد
+                activity.overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
+            });
+        }
     }
 
     private void syncStatusBarColor(WebView view) {
@@ -533,12 +558,10 @@ public class WebEngineManager {
     }
 
     private boolean isSameOrigin(Uri uri) {
-        if (trustedHost == null) return false;
-        String scheme = uri.getScheme();
-        String host = uri.getHost();
-        if (scheme == null || host == null) return false;
-
-        int port = uri.getPort() == -1 ? (scheme.equals("https") ? 443 : 80) : uri.getPort();
-        return scheme.equals(trustedScheme) && host.equalsIgnoreCase(trustedHost) && port == trustedPort;
+        if (trustedHost == null || uri == null || uri.getHost() == null) return false;
+        
+        String host = uri.getHost().toLowerCase();
+        // التحقق من المطابقة التامة أو المطابقة كـ Subdomain
+        return host.equals(trustedHost.toLowerCase()) || host.endsWith("." + trustedHost.toLowerCase());
     }
-            }
+                }
