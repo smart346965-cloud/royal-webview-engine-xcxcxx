@@ -418,15 +418,19 @@ public class WebEngineManager {
                 return super.shouldInterceptRequest(view, request);
             }
 
-            // [تعديل جراحي في WebEngineManager.java - توحيد المحرك]
+            // [تعديل جراحي 3 في WebEngineManager.java]
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                if (request == null || request.getUrl() == null) return false;
+                
+                // استدعاء المحرك السيادي مباشرة
                 return handleUriLogic(request.getUrl(), request.isForMainFrame());
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url == null) return false;
                 return handleUriLogic(Uri.parse(url), true);
             }
         });
@@ -439,64 +443,71 @@ public class WebEngineManager {
         capabilitiesEngine.attachDownloadManager(webView);
     }
 
-    // [تعديل جراحي في WebEngineManager.java - محرك الروابط السيادي V2]
+    // [تعديل جراحي 2 في WebEngineManager.java]
     private boolean handleUriLogic(Uri uri, boolean isMainFrame) {
         if (uri == null) return false;
         
         String url = uri.toString();
         String scheme = uri.getScheme();
 
-        // 1. القفل المطلق: إذا كان الرابط ينتمي لنفس النطاق، امنع أي تفكير في الخروج
+        // 🛡️ القاعدة الذهبية: إذا كان الرابط يخص المتجر، ابقَ مكانه فوراً!
         if (isSameOrigin(uri)) {
-            return false; // نترك السيطرة للـ WebView ولنظام الكاش WASM
+            return false; // False تعني: "يا ويب فيو، لا تتدخل، حمله داخلياً"
         }
 
-        // 2. معالجة البروتوكولات غير الويب (واتساب، اتصال، إلخ)
-        if (scheme != null && !scheme.startsWith("http")) {
-            try {
-                Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                
-                if (context.getPackageManager().resolveActivity(intent, 0) != null) {
-                    applyNativeExitTransition(); // 🚀 تطبيق الأنيميشن الحريري قبل الخروج
-                    context.startActivity(intent);
-                    return true;
-                }
-                
-                // Fallback إذا لم يثبت التطبيق
-                String fallbackUrl = intent.getStringExtra("browser_fallback_url");
-                if (fallbackUrl != null) {
-                    webView.loadUrl(fallbackUrl);
-                    return true;
-                }
-            } catch (Exception e) {
-                Log.e("RoyalEngine", "Intent error", e);
+        // 🚀 معالجة الروابط الخارجية (Apps Only)
+        try {
+            Intent intent;
+            if (url.startsWith("intent://")) {
+                intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+            } else {
+                intent = new Intent(Intent.ACTION_VIEW, uri);
             }
-            return true; 
-        }
 
-        // 3. معالجة روابط الويب الخارجية (Social Media)
-        if (isMainFrame && scheme != null && (scheme.equals("http") || scheme.equals("https"))) {
-            try {
-                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+            if (intent != null) {
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 
-                // فحص هل يوجد تطبيق أصلي (مثل تطبيق فيسبوك) بدلاً من المتصفح
+                // فحص هل يوجد تطبيق حقيقي (ليس متصفحاً) يمكنه فتح الرابط
                 android.content.pm.ResolveInfo resolveInfo = context.getPackageManager().resolveActivity(intent, 0);
                 if (resolveInfo != null) {
                     String pkgName = resolveInfo.activityInfo.packageName.toLowerCase();
-                    // إذا كان المستجيب ليس كروم أو متصفح النظام
+                    
+                    // إذا كان المستجيب ليس متصفحاً (يعني واتساب، انستقرام، الخ)
                     if (!pkgName.contains("chrome") && !pkgName.contains("browser") && !pkgName.equals("android")) {
-                        applyNativeExitTransition(); // 🚀 أنيميشن الخروج
+                        applyNativeExitTransition(); // أنيميشن خروج سلس
                         context.startActivity(intent);
-                        return true;
+                        return true; // True تعني: "تم الاقتناص بنجاح، لا تفتح شيئاً في الويب فيو"
                     }
                 }
-            } catch (Exception ignored) {}
+            }
+        } catch (Exception e) {
+            Log.e("RoyalEngine", "External redirection failed", e);
         }
 
-        // أي رابط خارجي لم نجد له تطبيقاً، نفتحه داخلياً للحفاظ على بقاء المستخدم
-        return false; 
+        // 🌐 إذا كان الرابط خارجياً (مثل جوجل) ولم نجد له تطبيقاً، نفتحه داخلياً كصفحة ويب
+        // لكي نضمن عدم خروج المستخدم من منصتك أبداً
+        if (!isSameOrigin(uri) && isMainFrame) {
+            webView.loadUrl(url);
+            return true; 
+        }
+
+        return false;
+    }
+
+    // [تعديل جراحي 1 في WebEngineManager.java]
+    private boolean isSameOrigin(Uri uri) {
+        if (uri == null || uri.getHost() == null) return false;
+        
+        // إذا لم نقم بتعيين الدومين الموثوق بعد، نعتبر أول رابط يفتح هو المرجع
+        if (trustedHost == null) {
+            setTrustedOrigin(uri.toString());
+        }
+
+        String host = uri.getHost().toLowerCase();
+        String rootHost = trustedHost.toLowerCase();
+        
+        // القفل: الرابط داخلي إذا كان يطابق الدومين أو هو Subdomain منه
+        return host.equals(rootHost) || host.endsWith("." + rootHost);
     }
 
     // [إضافة جراحية: محرك أنيميشن الانتقال]
@@ -556,12 +567,4 @@ public class WebEngineManager {
         trustedHost = uri.getHost();
         trustedPort = uri.getPort() == -1 ? (trustedScheme.equals("https") ? 443 : 80) : uri.getPort();
     }
-
-    private boolean isSameOrigin(Uri uri) {
-        if (trustedHost == null || uri == null || uri.getHost() == null) return false;
-        
-        String host = uri.getHost().toLowerCase();
-        // التحقق من المطابقة التامة أو المطابقة كـ Subdomain
-        return host.equals(trustedHost.toLowerCase()) || host.endsWith("." + trustedHost.toLowerCase());
-    }
-                }
+}
