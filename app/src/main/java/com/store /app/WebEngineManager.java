@@ -190,19 +190,15 @@ public class WebEngineManager {
         // 👑 إجبار الكروميوم على استخدام كاش الـ V8 بشكل مكثف وإلزامية التخزين الافتراضي
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         
-        // ⚡ [إضافة جراحية]: تعطيل الفحص الخارجي الآمن لتسريع زمن الاتصال (سرعة Kiwi)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            settings.setSafeBrowsingEnabled(false);
-        }
-        
-        // 👑 السماح بالوصول للملفات لتتمكن نواة كروم من كتابة الـ Bytecode محلياً
+        // [تعديل في WebEngineManager.java - دالة configureSettings]
+        settings.setSafeBrowsingEnabled(true); // إعادة التفعيل للأمان
         settings.setAllowFileAccess(true);
         settings.setAllowContentAccess(true);
-        
-        // 👑 السماح للموارد المحلية بالاتصال ببعضها لتخطي قيود الـ CORS داخل الكاش
-        settings.setAllowFileAccessFromFileURLs(true);
-        settings.setAllowUniversalAccessFromFileURLs(true);
 
+        // تقييد الوصول من ملفات الـ Assets للمواقع الخارجية لزيادة الأمان
+        settings.setAllowUniversalAccessFromFileURLs(false);
+        settings.setAllowFileAccessFromFileURLs(false);
+        
         // 👑 السماح بتشغيل الفيديو وملفات الصوت برمجياً (مهم جداً للإضافات)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
             settings.setMediaPlaybackRequiresUserGesture(false);
@@ -422,70 +418,16 @@ public class WebEngineManager {
                 return super.shouldInterceptRequest(view, request);
             }
 
+            // [تعديل جراحي في WebEngineManager.java - توحيد المحرك]
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                if (request == null || request.getUrl() == null) return false;
-                Uri uri = request.getUrl();
-                String scheme = uri.getScheme();
-                String url = uri.toString();
-
-                // 1. السماح بالتطبيقات الخارجية المحددة فقط (واتساب، اتصال، الخ)
-                if (scheme != null && (scheme.equals("tel") || scheme.equals("mailto") || scheme.equals("whatsapp") || scheme.equals("intent") || scheme.equals("sms"))) {
-                    try {
-                        Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        context.startActivity(intent);
-                    } catch (Exception e) {
-                        android.util.Log.e("RoyalEngine", "External App not found for: " + scheme);
-                    }
-                    return true; // تم التعامل معه بنجاح، لا تفتح كروم
-                }
-
-                // 2. قفل الحصن والمحرك الذكي للروابط (Smart Deep-Link Engine)
-                if (scheme != null && (scheme.equals("http") || scheme.equals("https"))) {
-                    if (isSameOrigin(uri)) {
-                        return false; // نفس النطاق -> يفتح داخلياً بسلاسة وبدون تدخل
-                    } else {
-                        try {
-                            Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                            android.content.pm.ResolveInfo resolveInfo = context.getPackageManager().resolveActivity(intent, 0);
-                            
-                            // التحقق: هل النظام سيفتح المتصفح أم التطبيق الأصلي المعني؟
-                            if (resolveInfo != null) {
-                                String pkgName = resolveInfo.activityInfo.packageName.toLowerCase();
-                                // إذا كان المستجيب متصفحاً خارجياً أو واجهة اختيار النظام
-                                if (pkgName.equals("android") || pkgName.contains("chrome") || pkgName.contains("browser") || pkgName.contains("opera") || pkgName.contains("miui") || pkgName.contains("sec.android.app.sbrowser")) {
-                                    // نمنع الخروج للمتصفح الخارجي ونفتحه كصفحة داخلية في تطبيقنا
-                                    view.loadUrl(url);
-                                } else {
-                                    // 🚀 النصر! وجدنا التطبيق الأصلي (يوتيوب، واتساب، انستقرام...) -> نفتحه فوراً
-                                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                    context.startActivity(intent);
-                                }
-                            } else {
-                                // لا يوجد أي تطبيق يمكنه التعامل مع الرابط -> نفتحه كصفحة داخلية
-                                view.loadUrl(url);
-                            }
-                        } catch (Exception e) {
-                            // 🛡️ في حال حدوث أي استثناء أمني، الحماية القصوى هي الفتح الداخلي
-                            view.loadUrl(url);
-                        }
-                        return true;
-                    }
-                }
-                
-                // منع أي محاولة هروب لأي بروتوكول آخر غير معروف
-                return true; 
+                return handleUriLogic(request.getUrl(), request.isForMainFrame());
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, String url) {
-                if (url != null) {
-                    RoyalPanopticon.recordUserClick(url);
-                    return handleUriLogic(Uri.parse(url), true);
-                }
-                return false;
+                return handleUriLogic(Uri.parse(url), true);
             }
         });
 
@@ -495,6 +437,52 @@ public class WebEngineManager {
 
         // 👑 تعديل جراحي: تفعيل محرك التحميلات لملفات PDF والصور
         capabilitiesEngine.attachDownloadManager(webView);
+    }
+
+    // [تعديل جراحي في WebEngineManager.java - توحيد المحرك]
+    private boolean handleUriLogic(Uri uri, boolean isMainFrame) {
+        String url = uri.toString();
+        String scheme = uri.getScheme();
+
+        // 1. روابط البروتوكولات الخاصة (واتساب، اتصال، إيميل، تيليجرام)
+        if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("whatsapp:") || url.startsWith("tg:") || url.startsWith("intent:")) {
+            try {
+                Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                context.startActivity(intent);
+                return true;
+            } catch (Exception e) {
+                // إذا لم يجد التطبيق، وكان هناك رابط ويب بديل (Fallback)
+                try {
+                    String fallbackUrl = Intent.parseUri(url, Intent.URI_INTENT_SCHEME).getStringExtra("browser_fallback_url");
+                    if (fallbackUrl != null) {
+                        webView.loadUrl(fallbackUrl);
+                        return true;
+                    }
+                } catch (Exception ignored) {}
+                return true; 
+            }
+        }
+
+        // 2. معالجة روابط الشبكات الاجتماعية (Instagram, Facebook, YouTube)
+        if (scheme != null && (scheme.equals("http") || scheme.equals("https"))) {
+            if (isSameOrigin(uri)) {
+                return false; // الرابط داخلي للمتجر -> افتحه بسلاسة
+            } else {
+                // رابط خارجي (مثل إنستقرام المتجر)
+                try {
+                    Intent intent = new Intent(Intent.ACTION_VIEW, uri);
+                    // محاولة فتح التطبيق مباشرة بدون Chooser مزعج
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    context.startActivity(intent);
+                    return true; // نجح الفتح في التطبيق الخارجي
+                } catch (Exception e) {
+                    // 🚀 النصر: التطبيق غير مثبت -> افتحه داخل تطبيقنا كصفحة ويب عادية
+                    return false; 
+                }
+            }
+        }
+        return false;
     }
 
     private void syncStatusBarColor(WebView view) {
@@ -552,55 +540,5 @@ public class WebEngineManager {
 
         int port = uri.getPort() == -1 ? (scheme.equals("https") ? 443 : 80) : uri.getPort();
         return scheme.equals(trustedScheme) && host.equalsIgnoreCase(trustedHost) && port == trustedPort;
-    }
-
-    // [تعديل جراحي في WebEngineManager.java - محرك الروابط العميقة]
-    private boolean handleUriLogic(Uri uri, boolean isMainFrame) {
-        String url = uri.toString();
-        
-        // 1. معالجة البروتوكولات القياسية (اتصال، إيميل، رسائل)
-        if (url.startsWith("tel:") || url.startsWith("mailto:") || url.startsWith("sms:") || url.startsWith("whatsapp:")) {
-            try {
-                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                context.startActivity(intent);
-                return true;
-            } catch (Exception e) {
-                return true; // منع الويب فيو من محاولة فتحه كصفحة
-            }
-        }
-
-        // 2. المحرك العبقري للروابط المعقدة (Intents) مثل Instagram و Facebook
-        if (url.startsWith("intent://")) {
-            try {
-                Intent intent = Intent.parseUri(url, Intent.URI_INTENT_SCHEME);
-                if (intent != null) {
-                    // محاولة تشغيل التطبيق الأصلي
-                    if (context.getPackageManager().resolveActivity(intent, 0) != null) {
-                        context.startActivity(intent);
-                        return true;
-                    }
-                    // Fallback: إذا لم يكن التطبيق مثبتاً، نفتح رابط المتجر
-                    String fallbackUrl = intent.getStringExtra("browser_fallback_url");
-                    if (fallbackUrl != null) {
-                        webView.loadUrl(fallbackUrl);
-                        return true;
-                    }
-                }
-            } catch (Exception e) {
-                Log.e("RoyalEngine", "Intent parsing failed", e);
-            }
-        }
-
-        // 3. فتح المواقع الخارجية (غير الدومين الموثوق) في المتصفح الخارجي لضمان الأمان
-        if (!isSameOrigin(uri) && isMainFrame) {
-            try {
-                Intent intent = new Intent(Intent.ACTION_VIEW, uri);
-                context.startActivity(intent);
-                return true;
-            } catch (Exception ignored) {}
-        }
-
-        return false; // الروابط الداخلية تمر بسلام لنواتنا
     }
             }
