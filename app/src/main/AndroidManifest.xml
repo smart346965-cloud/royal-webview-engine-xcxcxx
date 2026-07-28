@@ -13,6 +13,7 @@
     
     <!-- 2. الكاميرا والمايكروفون (للـ WebRTC ومسح الباركود والرسائل الصوتية) -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- [تعديل جراحي في AndroidManifest.xml] -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     
@@ -21,13 +22,19 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     
     <!-- 4. الاتصال الخارجي (بلوتوث للطابعات الحرارية، و NFC للدفع) -->
+    <!-- [تعديل جراحي في AndroidManifest.xml] -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.NFC" />
     
     <!-- 5. المستشعرات وقفل الشاشة (لمنع انطفاء الشاشة أثناء التوصيل أو تشغيل الفيديو) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- [تعديل جراحي في AndroidManifest.xml] -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <!-- 🛡️ [إعلان الميزات كعناصر اختيارية]: 
          هذا الجزء حاسم جداً لمنع متجر جوجل بلاي من حظر تطبيقك عن الأجهزة التي لا تملك بلوتوث أو NFC -->
