@@ -130,9 +130,10 @@ public class RoyalCapabilitiesEngine {
             @Override
             public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback callback) {
                 if (ContextCompat.checkSelfPermission(activity, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                    // نطلب الإذن من أندرويد ونخزن الـ callback للرد عليه لاحقاً
-                    ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, 102);
-                    // للتبسيط في النسخة الحالية: سنوافق فوراً إذا كان المستخدم قد منح الإذن للنظام سابقاً
+                    ActivityCompat.requestPermissions(activity, new String[]{
+                            Manifest.permission.ACCESS_FINE_LOCATION, 
+                            Manifest.permission.ACCESS_COARSE_LOCATION
+                    }, 102);
                     callback.invoke(origin, true, false);
                 } else {
                     callback.invoke(origin, true, false);
@@ -145,23 +146,36 @@ public class RoyalCapabilitiesEngine {
             public void onPermissionRequest(final PermissionRequest request) {
                 activity.runOnUiThread(() -> {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        // 🛡️ فحص ذكي: هل يحتاج الموقع كاميرا أو مايكروفون؟
                         String[] resources = request.getResources();
                         for (String resource : resources) {
+                            // الكاميرا
                             if (resource.equals(PermissionRequest.RESOURCE_VIDEO_CAPTURE)) {
                                 if (ContextCompat.checkSelfPermission(activity, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                                    lastPermissionRequest = request;
                                     ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.CAMERA}, 103);
-                                    return;
+                                }
+                            }
+                            // الميكروفون (تمت الإضافة الآن)
+                            if (resource.equals(PermissionRequest.RESOURCE_AUDIO_CAPTURE)) {
+                                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                                    ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.RECORD_AUDIO}, 104);
                                 }
                             }
                         }
-                        // إذا كانت الأذونات ممنوحة مسبقاً، اطلق العنان!
+                        // منح الإذن لكل ما طلبه المتصفح (الموافقة الفعلية تأتي من النظام لاحقاً)
                         request.grant(resources);
                     }
                 });
             }
         };
+    }
+
+    // 3. طلب إذن الإشعارات لأندرويد 13+ فور تشغيل التطبيق (اختياري)
+    public void checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(activity, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(activity, new String[]{Manifest.permission.POST_NOTIFICATIONS}, 105);
+            }
+        }
     }
 
     // دالة لمعالجة الرد القادم من MainActivity (سنستدعيها لاحقاً)
@@ -175,4 +189,4 @@ public class RoyalCapabilitiesEngine {
             lastPermissionRequest = null;
         }
     }
-                    }
+            }
