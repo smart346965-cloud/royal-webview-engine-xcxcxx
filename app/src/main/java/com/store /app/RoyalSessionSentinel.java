@@ -93,14 +93,14 @@ public final class RoyalSessionSentinel {
     // ==========================================
     // ⚡ RESURRECT: إحياء الجلسة فوراً
     // ==========================================
-    public static void resurrect(WebView webView, Activity activity) {
-        if (webView == null || activity == null) return;
+    public static boolean resurrect(WebView webView, Activity activity) {
+        if (webView == null || activity == null) return false;
 
         File dir = activity.getCacheDir();
         File mFile = new File(dir, META_FILE);
         File sFile = new File(dir, SNAPSHOT_FILE);
 
-        if (!mFile.exists()) return;
+        if (!mFile.exists()) return false;
 
         // 1. عرض اللقطة الشبحية فوراً (Visual Continuity) قبل أي شيء
         if (sFile.exists()) {
@@ -144,6 +144,8 @@ public final class RoyalSessionSentinel {
                 mainHandler.post(() -> hideGhostOverlay());
             }
         });
+
+        return true;
     }
 
     // ==========================================
@@ -191,4 +193,4 @@ public final class RoyalSessionSentinel {
                     .start();
         }
     }
-  }
+}
