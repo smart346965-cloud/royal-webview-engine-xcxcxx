@@ -75,13 +75,16 @@ public class MainActivity extends AppCompatActivity {
         // 2️⃣ تعيين المحرك الخالد كواجهة أساسية مباشرة (استجابة 0ms)
         setContentView(activeWebView);
 
-        // 3️⃣ توجيه المحرك للهدف
-        // 👑 استدعاء الرابط المحقون ديناميكياً من نظام Nexus السحابي عبر BuildConfig
+        // 🚀 [تعديل ملكي]: محاولة إحياء الجلسة السابقة بدلاً من التحميل الأعمى
+        // سنقوم بتعديل بسيط: إذا نجح الإحياء، لن نقوم بتحميل targetUrl
+        boolean hasSession = RoyalSessionSentinel.resurrect(activeWebView, this);
+
         String targetUrl = BuildConfig.CLIENT_URL; 
-        
-        if (activeWebView.getUrl() == null || !activeWebView.getUrl().startsWith("http")) {
-            Log.i(TAG, "🚀 Royal Engine Booting Target: " + targetUrl);
-            activeWebView.loadUrl(targetUrl);
+        if (!hasSession) {
+            if (activeWebView.getUrl() == null || !activeWebView.getUrl().startsWith("http")) {
+                Log.i(TAG, "🚀 No session found. Booting fresh: " + targetUrl);
+                activeWebView.loadUrl(targetUrl);
+            }
         }
 
         // 4️⃣ نظام التحكم بالرجوع المستقل نيتف
@@ -280,4 +283,4 @@ public class MainActivity extends AppCompatActivity {
             engineManager.getCapabilitiesHandler().handlePermissionResult(requestCode, grantResults);
         }
     }
-                        }
+    }
