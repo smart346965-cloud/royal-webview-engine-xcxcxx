@@ -7,10 +7,10 @@
  */
 
 const CONFIG = {
-    CORE_CACHE: 'nexus-core-v2',
-    IMAGE_CACHE: 'nexus-images-v2',
-    FONT_CACHE: 'nexus-fonts-v2',
-    PAGE_CACHE: 'nexus-pages-v2',
+    CORE_CACHE: 'nexus-core-v5',
+    IMAGE_CACHE: 'nexus-images-v5',
+    FONT_CACHE: 'nexus-fonts-v5',
+    PAGE_CACHE: 'nexus-pages-v5',
     OFFLINE_PAGE: '/offline.html',
     
     // الصلاحيات الزمنية للتخزين
@@ -21,12 +21,12 @@ const CONFIG = {
         PAGES: 24 * 60 * 60             // يوم واحد للصفحات
     },
     
-    // الحد الأقصى لعدد الملفات في كل كاش
+    // 👑 رفع عدد الملفات المسموح بها لتتناسب مع الـ 4GB
     MAX_ITEMS: {
-        CORE: 200,
-        IMAGES: 500,
-        FONTS: 50,
-        PAGES: 100
+        CORE: 1000,   // أرشفة كل كود الموقع
+        IMAGES: 3000,  // أرشفة جميع صور المنتجات بدقة عالية
+        FONTS: 100,
+        PAGES: 1000   // أرشفة الموقع كاملاً تقريباً
     }
 };
 
@@ -238,7 +238,7 @@ self.addEventListener('fetch', (event) => {
     if (url.protocol === 'ws:' || url.protocol === 'wss:') return;
     
     // ========================================
-    // 🏠 استراتيجية الصفحة الرئيسية: Cache-First + Background Update
+    // 🏠 استراتيجية الصفحة الرئيسية: Offline-First + Visual Continuity
     // ========================================
     if (request.mode === 'navigate') {
         event.respondWith(handlePageRequest(request));
@@ -282,100 +282,36 @@ self.addEventListener('fetch', (event) => {
 // ============================================================
 
 /**
- * 🏠 معالج الصفحات: Cache-First مع تحديث خلفي + Predictive Preload
+ * 🏠 معالج الصفحات: Offline-First + Visual Continuity
+ * هذا الجزء يضمن عدم ظهور صفحة Chrome أبداً
  */
 async function handlePageRequest(request) {
     const cache = await caches.open(CONFIG.PAGE_CACHE);
-    const cachedResponse = await cache.match(request);
     
-    // 🚀 إذا وجدت الصفحة مخزنة، أرجعها فوراً
+    // 1. محاولة جلب النسخة الأحدث من الشبكة (Network-First) مع Timeout
+    // لكي نضمن سرعة الرد حتى لو الإنترنت ضعيف
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 ثواني للرد أو التحول للكاش
+
+    try {
+        const networkResponse = await fetch(request, { signal: controller.signal });
+        if (networkResponse && networkResponse.status === 200) {
+            clearTimeout(timeoutId);
+            await cacheWithDate(CONFIG.PAGE_CACHE, request, networkResponse.clone());
+            return networkResponse;
+        }
+    } catch (error) {
+        console.log("[Nexus X] 📡 Network Fail/Timeout. Switching to Warehouse...");
+    }
+
+    // 2. 🚀 [الدرع الملكي]: إذا فشلت الشبكة، أرجع الكاش فوراً (0ms Offline Experience)
+    const cachedResponse = await cache.match(request);
     if (cachedResponse) {
-        console.log(`[Nexus X] ⚡ Page served from cache: ${request.url}`);
-        
-        // 🔄 تحديث الصفحة في الخلفية بصمت
-        fetch(request, { cache: 'no-cache' })
-            .then(response => {
-                if (response && response.status === 200) {
-                    cacheWithDate(CONFIG.PAGE_CACHE, request, response);
-                    console.log(`[Nexus X] 🔄 Page updated in background: ${request.url}`);
-                    
-                    // 📡 إشعار العميل بأن تحديثاً متوفراً
-                    notifyClientUpdate(request.url);
-                }
-            })
-            .catch(() => {/* فشل صامت */});
-        
-        // 🔮 تحميل تنبؤي للروابط داخل الصفحة
-        predictivePreload(cachedResponse);
-        
         return cachedResponse;
     }
-    
-    // ⚡ إذا لم تكن مخزنة، جلب من الشبكة مع عرض صفحة مؤقتة
-    try {
-        const networkResponse = await fetch(request);
-        
-        if (networkResponse && networkResponse.status === 200) {
-            await cacheWithDate(CONFIG.PAGE_CACHE, request, networkResponse.clone());
-            
-            // 🔮 تحميل تنبؤي
-            predictivePreload(networkResponse.clone());
-        }
-        
-        return networkResponse;
-    } catch (error) {
-        // 🆘 عرض صفحة Offline
-        const offlineCache = await caches.open(CONFIG.PAGE_CACHE);
-        const offlinePage = await offlineCache.match(CONFIG.OFFLINE_PAGE);
-        
-        if (offlinePage) {
-            return offlinePage;
-        }
-        
-        // إذا لم توجد صفحة Offline، عرض رسالة
-        return new Response(
-            `<!DOCTYPE html>
-            <html dir="rtl">
-            <head><meta charset="UTF-8"><title>غير متصل</title>
-            <style>
-                body { 
-                    display: flex; 
-                    justify-content: center; 
-                    align-items: center; 
-                    height: 100vh; 
-                    margin: 0; 
-                    font-family: system-ui; 
-                    background: #f5f5f5;
-                    color: #333;
-                }
-                .container { text-align: center; padding: 2rem; }
-                h1 { font-size: 3rem; margin-bottom: 0.5rem; }
-                button { 
-                    margin-top: 1.5rem;
-                    padding: 0.8rem 2rem;
-                    font-size: 1rem;
-                    background: #007bff;
-                    color: white;
-                    border: none;
-                    border-radius: 8px;
-                    cursor: pointer;
-                }
-            </style></head>
-            <body>
-                <div class="container">
-                    <h1>📡</h1>
-                    <h2>أنت غير متصل بالإنترنت</h2>
-                    <p>يرجى التحقق من اتصالك والمحاولة مرة أخرى</p>
-                    <button onclick="location.reload()">🔄 إعادة المحاولة</button>
-                </div>
-            </body></html>`,
-            { 
-                status: 200, 
-                statusText: 'Offline',
-                headers: { 'Content-Type': 'text/html; charset=utf-8' }
-            }
-        );
-    }
+
+    // 3. 🆘 إذا لم يوجد كاش أبداً (أول تشغيل)، أرجع الصفحة الرئيسية المخزنة مسبقاً
+    return caches.match('/');
 }
 
 /**
@@ -501,11 +437,12 @@ async function handleDefaultRequest(request) {
 }
 
 // ============================================================
-// 🔮 التحميل التنبؤي الذكي
+// 🔮 التحميل التنبؤي الذكي (Spider Preload)
 // ============================================================
 
 /**
  * تحليل محتوى الصفحة واستخراج الروابط للتحميل المسبق
+ * بدلاً من 5 روابط، سنقوم بتحميل الروابط العميقة (Deep Links) بصمت
  */
 async function predictivePreload(response) {
     try {
@@ -513,7 +450,7 @@ async function predictivePreload(response) {
         
         // استخراج الروابط من HTML
         const linkRegex = /href=["']([^"']+)["']/g;
-        const links = new Set();
+        const links = [];
         let match;
         
         while ((match = linkRegex.exec(text)) !== null) {
@@ -526,24 +463,31 @@ async function predictivePreload(response) {
                 !href.includes('logout') &&
                 !href.includes('sign-out')
             ) {
-                links.add(href);
+                links.push(href);
             }
         }
         
-        // تحميل مسبق لأول 5 روابط (بصمت)
-        const preloadList = Array.from(links).slice(0, 5);
+        // تحميل أول 20 رابط في الصفحة بصمت تام
+        const preloadList = links.slice(0, 20);
         
         if (preloadList.length > 0) {
-            console.log(`[Nexus X] 🔮 Predictive preload: ${preloadList.length} pages`);
+            console.log(`[Nexus X] 🔮 Predictive preload: ${preloadList.length} deep links`);
+            
+            const cache = await caches.open(CONFIG.PAGE_CACHE);
             
             for (const link of preloadList) {
-                try {
-                    const response = await fetch(link, { cache: 'no-cache' });
-                    if (response && response.status === 200) {
-                        await cacheWithDate(CONFIG.PAGE_CACHE, link, response);
+                // التحقق من وجود الرابط في الكاش مسبقاً لتجنب التكرار
+                const exists = await cache.match(link);
+                if (!exists) {
+                    try {
+                        const response = await fetch(link, { cache: 'no-cache' });
+                        if (response && response.status === 200) {
+                            await cacheWithDate(CONFIG.PAGE_CACHE, link, response);
+                            console.log(`[Nexus X] 🔮 Spider preloaded: ${link}`);
+                        }
+                    } catch (err) {
+                        // فشل صامت للتحميل التنبؤي
                     }
-                } catch (err) {
-                    // فشل صامت للتحميل التنبؤي
                 }
             }
         }
