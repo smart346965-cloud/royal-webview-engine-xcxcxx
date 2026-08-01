@@ -278,31 +278,31 @@ public class WebEngineManager {
                 return true;
             }
 
-            private void triggerOfflineProtection(WebView view, String failingUrl) {
-                if (failingUrl != null && !failingUrl.startsWith("file:///android_asset/")) {
-                    RoyalNetworkEngine.notifyRenderIdle();
-                    view.stopLoading();
-                    view.clearHistory();
-                    view.post(() -> {
-                        String offline = "file:///android_asset/public/offline.html?origin=" + Uri.encode(failingUrl);
-                        view.loadUrl(offline);
-                    });
-                }
-            }
-
+            // [تعديل جراحي في WebEngineManager.java]
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request != null && request.isForMainFrame()) {
-                    RoyalNetworkEngine.notifyRenderIdle();
-                    triggerOfflineProtection(view, request.getUrl().toString());
+                    // 🚀 القاعدة الذهبية: إذا انقطع الإنترنت، لا تفعل شيئاً (Freeze UI)
+                    // لا تحمل صفحة أوفلاين، لا تمسح الشاشة. فقط ابقَ مكانك.
+                    Log.w("RoyalEngine", "🛡️ Connection Drop Detected. Freezing UI to prevent Chrome Error Page.");
+                    
+                    // منع الويب فيو من إكمال عملية التحويل لصفحة الخطأ
+                    view.stopLoading(); 
+                    
+                    // إذا كانت الصفحة فارغة تماماً (أول تشغيل)، فقط حينها يمكن عرض شيء من الكاش
+                    if (view.getUrl() == null || view.getUrl().equals("about:blank")) {
+                        // محاولة استدعاء الرئيسية من المستودع العملاق
+                        view.loadUrl(trustedScheme + "://" + trustedHost + "/");
+                    }
                 }
             }
 
             @SuppressWarnings("deprecation")
             @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
-                RoyalNetworkEngine.notifyRenderIdle();
-                triggerOfflineProtection(view, failingUrl);
+                // 🚀 القاعدة الذهبية: الصمت التام
+                Log.w("RoyalEngine", "🛡️ Legacy Error Intercepted. Freezing UI.");
+                view.stopLoading();
             }
 
             // [تعديل جراحي 2: حقن درع نكسوس في الأندرويد]
@@ -398,7 +398,9 @@ public class WebEngineManager {
                     }
                 }
 
+                // 🛡️ صمام الأمان: منع الطلبات من الخروج إذا كانت الشبكة ميتة
                 if (!NetworkMonitor.isInternetAvailable(context) && request.isForMainFrame()) {
+                    // [السر الهندسي]: إعادة استجابة فارغة تجعل الويب فيو "يصمت" ولا يظهر صفحة الخطأ
                     return new WebResourceResponse("text/html", "UTF-8", null);
                 }
 
@@ -625,4 +627,4 @@ public class WebEngineManager {
                 && trustedScheme.equalsIgnoreCase(targetScheme)
                 && trustedPort == port;
     }
-                }
+    }
