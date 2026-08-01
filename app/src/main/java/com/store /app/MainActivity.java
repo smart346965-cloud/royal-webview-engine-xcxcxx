@@ -10,6 +10,7 @@ import android.webkit.WebSettings;
 import android.widget.ProgressBar;
 import android.widget.ImageView;
 import android.widget.FrameLayout;
+import android.widget.TextView;
 import androidx.activity.OnBackPressedCallback;
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Handler;
@@ -32,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
     private long splashStartTime = 0;
     private static final long FIXED_SPLASH_TIME = 5000; // قيمة ثابتة 5 ثوانٍ بالتمام والكمال
     private boolean isPageReady = false; // flag للرندرة
+    private TextView offlineBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -107,6 +109,37 @@ public class MainActivity extends AppCompatActivity {
 
         // 6️⃣ بناء وتجهيز طبقة شاشة التحميل (Splash Screen Overlay)
         setupSplashScreen();
+
+        // 7️⃣ إنشاء شريط الأوفلاين السينمائي
+        createOfflineBar();
+        
+        // ربط الشريط بمراقب الشبكة
+        NetworkMonitor.setListener(connected -> {
+            if (connected) {
+                offlineBar.animate().translationY(100).setDuration(400).withEndAction(() -> offlineBar.setVisibility(View.GONE)).start();
+            } else {
+                offlineBar.setVisibility(View.VISIBLE);
+                offlineBar.setTranslationY(100);
+                offlineBar.animate().translationY(0).setDuration(400).start();
+            }
+        });
+    }
+
+    private void createOfflineBar() {
+        offlineBar = new TextView(this);
+        offlineBar.setText("لا يتوفر اتصال بالإنترنت");
+        offlineBar.setTextColor(Color.WHITE);
+        offlineBar.setBackgroundColor(Color.parseColor("#323232")); // أسود يوتيوب الأنيق
+        offlineBar.setGravity(android.view.Gravity.CENTER);
+        offlineBar.setPadding(0, 12, 0, 12);
+        offlineBar.setTextSize(14f);
+        offlineBar.setVisibility(View.GONE); // مخفي في البداية
+
+        FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 80, android.view.Gravity.BOTTOM);
+        // وضعه فوق أزرار التنقل قليلاً
+        params.bottomMargin = 0; 
+        addContentView(offlineBar, params);
     }
 
     private void setupSplashScreen() {
@@ -247,4 +280,4 @@ public class MainActivity extends AppCompatActivity {
             engineManager.getCapabilitiesHandler().handlePermissionResult(requestCode, grantResults);
         }
     }
-    }
+                        }
