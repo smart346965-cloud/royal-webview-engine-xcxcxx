@@ -6,12 +6,22 @@ import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.net.NetworkRequest;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public class NetworkMonitor {
 
     private static final AtomicBoolean isConnected = new AtomicBoolean(true);
     private static boolean isRegistered = false;
+
+    // 👑 جسر الإشعارات: واجهة للتحدث مع الواجهة الأمامية
+    public interface NetworkStateListener {
+        void onNetworkChanged(boolean connected);
+    }
+    private static NetworkStateListener listener;
+
+    public static void setListener(NetworkStateListener l) { listener = l; }
 
     public static void init(Context context) {
         if (isRegistered) return;
@@ -43,6 +53,10 @@ public class NetworkMonitor {
                         isConnected.set(ok);
 
                         RoyalNetworkEngine.setNetworkPrefetchAllowed(ok);
+
+                        if (listener != null) {
+                            new Handler(Looper.getMainLooper()).post(() -> listener.onNetworkChanged(ok));
+                        }
                     }
                     @Override
                     public void onLost(Network network) {
@@ -50,6 +64,10 @@ public class NetworkMonitor {
                         isConnected.set(false);
 
                         RoyalNetworkEngine.setNetworkPrefetchAllowed(false);
+
+                        if (listener != null) {
+                            new Handler(Looper.getMainLooper()).post(() -> listener.onNetworkChanged(false));
+                        }
                     }
                 });
             }
