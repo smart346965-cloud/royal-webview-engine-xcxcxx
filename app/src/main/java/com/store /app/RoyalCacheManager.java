@@ -29,8 +29,9 @@ public final class RoyalCacheManager {
     // 👑 تحويل السقف إلى متغير ديناميكي يلتهم المساحة المتاحة بذكاء
     private static long MAX_DISK_CACHE;
 
-    private static final int RAM_LIMIT = 20 * 1024 * 1024;
-    private static final int RAM_THRESHOLD = 2 * 1024 * 1024;
+    // 1. رفع سقف الـ RAM L1 إلى 50 ميجابايت بدلاً من 20 (لسرعة البرق في الصور)
+    private static final int RAM_LIMIT = 50 * 1024 * 1024; 
+    private static final int RAM_THRESHOLD = 5 * 1024 * 1024; // رفع عتبة الترقية للرام إلى 5 ميجا
 
     // [حقن في بداية RoyalCacheManager]
     private static final long BLIND_TRUST_WINDOW = 100; // نافذة الثقة (100 مللي ثانية)
@@ -71,21 +72,19 @@ public final class RoyalCacheManager {
     public static void init(Context context) {
         if (cacheDir != null) return;
 
-        // 👑 التوجيه نحو الذاكرة الخارجية إذا كانت متوفرة للحصول على مساحة أكبر
+        // 👑 التوجيه نحو الذاكرة الخارجية دائماً للحصول على المساحة العملاقة
         File extCache = context.getExternalCacheDir();
-        File targetDir = (extCache != null && extCache.getUsableSpace() > 200L * 1024 * 1024) 
-                ? extCache : context.getCacheDir();
-                
-        cacheDir = new File(targetDir, "royal_cache_v4"); // ترقية الإصدار
+        cacheDir = new File(extCache != null ? extCache : context.getCacheDir(), "royal_warehouse_v5");
         if (!cacheDir.exists()) cacheDir.mkdirs();
 
-        // 👑 التهام المساحة باحترافية: 15% من مساحة الهاتف الفارغة! 
-        // بحد أدنى 300 ميجابايت، وحد أقصى 2 جيجابايت (للمتاجر الضخمة).
+        // 🚀 تنفيذ أمر الـ 4 جيجابايت: 
+        // نأخذ 4GB كقيمة ثابتة إذا توفرت المساحة، أو 25% من مساحة الهاتف الفارغة!
         long usableSpace = cacheDir.getUsableSpace();
-        MAX_DISK_CACHE = Math.max(300L * 1024 * 1024, 
-                         Math.min((long)(usableSpace * 0.15), 2048L * 1024 * 1024));
+        long targetCache = 4096L * 1024 * 1024; // 4 GB
+        
+        MAX_DISK_CACHE = Math.min(targetCache, (long)(usableSpace * 0.25));
                          
-        Log.i(TAG, "🔥 Royal Cache Storage Allocated: " + (MAX_DISK_CACHE / (1024 * 1024)) + " MB");
+        Log.i(TAG, "🏗️ Royal Warehouse Initialized: " + (MAX_DISK_CACHE / (1024 * 1024)) + " MB Allocated.");
 
         performLRUEviction();
     }
@@ -339,16 +338,15 @@ public final class RoyalCacheManager {
     // 🧠 RULES
     // ==========================================
 
+    // 2. تعديل منطق الـ isCacheable ليكون "شرهًا" في التخزين
     private static boolean isCacheable(String url) {
         String clean = url.split("\\?")[0].toLowerCase();
-        // استثناءات قانونية ثابتة
-        if (clean.contains("/api/") || clean.contains("login") || clean.contains("checkout")) return false;
+        // استثناءات أمنية فقط (لا نخزن العمليات المالية)
+        if (clean.contains("/checkout") || clean.contains("/payment") || clean.contains("/auth")) return false;
         
-        for (String e : EXT) {
-            if (clean.endsWith(e)) return true;
-        }
-        // صفحات المتاجر الهيكلية
-        return !clean.matches(".*\\.[a-z0-9]{2,5}$");
+        // 👑 القاعدة الذهبية: خزن كل شيء آخر! 
+        // المتاجر تحتاج لصور عالية الدقة وخطوط وجافا سكريبت ضخم، سنلتهمها جميعاً.
+        return true; 
     }
 
     private static long resolveTTL(String url) {
@@ -644,4 +642,4 @@ public final class RoyalCacheManager {
             Log.e(TAG, "Royal Download Manager failed", e);
         }
     }
-    }
+                                         }
