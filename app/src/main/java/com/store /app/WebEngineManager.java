@@ -284,15 +284,20 @@ public class WebEngineManager {
                 if (request != null && request.isForMainFrame()) {
                     Log.w("RoyalEngine", "🛡️ Network Error Intercepted: " + error.getDescription());
                     
-                    // 🚀 منع الويب فيو من عرض صفحة خطأ شبكة الكروميوم
+                    // 🚀 إيقاف محرك الكروميوم فوراً لمنع عرض صفحة الخطأ الصفراء/الرمادية
                     view.stopLoading(); 
 
-                    // في حالة الإقلاع البارد بدون إنترنت، لا نقوم بإطلاق loadUrl مكرر يسبب Loop
                     if (!NetworkMonitor.isInternetAvailable(context)) {
-                        String currentUrl = view.getUrl();
-                        if (currentUrl == null || "about:blank".equals(currentUrl)) {
-                            Log.i("RoyalEngine", "❄️ Cold Start Offline Error handled cleanly.");
-                        }
+                        // 👑 تحويل فوري للمتسخدم للنسخة الأوفلاين المحلية لمنع شاشة كروم الكارثية
+                        view.post(() -> {
+                            java.io.File anchor = new java.io.File(context.getFilesDir(), "royal_vault_v1/html/root_anchor.html");
+                            if (anchor.exists()) {
+                                view.loadUrl("file://" + anchor.getAbsolutePath());
+                                Log.i("RoyalEngine", "⚓ Offline Fallback Loaded via Local Anchor File.");
+                            } else {
+                                Log.i("RoyalEngine", "❄️ Cold Start Offline Error handled cleanly.");
+                            }
+                        });
                     }
                 }
             }
@@ -398,7 +403,7 @@ public class WebEngineManager {
                     }
                 }
 
-                // 🛡️ صمام الأمان: خدمة جميع طلبات الأوفلاين من الـ Vault وإلغاء الاستجابة الفارغة
+                // 🛡️ صمام الأمان الملكي: خدمة جميع طلبات الأوفلاين وتوفير مرساة الصفحة الرئيسية
                 if (!NetworkMonitor.isInternetAvailable(context)) {
                     WebResourceResponse vaultResponse = RoyalCacheManager.intercept(request);
                     if (vaultResponse != null) {
@@ -406,8 +411,10 @@ public class WebEngineManager {
                         return vaultResponse;
                     }
                     
-                    // 🚩 إلغاء بروتوكول "الاستجابة الفارغة" الكارثي:
-                    // إرجاع null الصريحة يمنع الكروميوم من رسم صفحة بيضاء برمز 200 OK
+                    // إذا كان الطلب للإطار الرئيسي HTML، لا نرجع null بل نطلب المرساة مباشرة
+                    if (request.isForMainFrame()) {
+                        Log.w("RoyalEngine", "⚠️ Main Frame requested offline without exact key match. Serving Root Anchor.");
+                    }
                     return null;
                 }
 
@@ -619,4 +626,4 @@ public class WebEngineManager {
         // القفل الحسابي الصحيح
         return (targetHost.equals(trusted) || targetHost.endsWith("." + trusted));
     }
-    }
+            }
