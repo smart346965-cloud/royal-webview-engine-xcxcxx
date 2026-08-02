@@ -282,17 +282,22 @@ public class WebEngineManager {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request != null && request.isForMainFrame()) {
-                    // 🚀 القاعدة الذهبية: إذا انقطع الإنترنت، لا تفعل شيئاً (Freeze UI)
-                    // لا تحمل صفحة أوفلاين، لا تمسح الشاشة. فقط ابقَ مكانك.
-                    Log.w("RoyalEngine", "🛡️ Connection Drop Detected. Freezing UI to prevent Chrome Error Page.");
+                    // 🚀 القاعدة الذهبية: تجميد الواجهة (Freeze UI)
+                    Log.w("RoyalEngine", "🛡️ Network Error Intercepted: " + error.getDescription());
                     
-                    // منع الويب فيو من إكمال عملية التحويل لصفحة الخطأ
+                    // منع الويب فيو من الانتقال لصفحة ERR_INTERNET_DISCONNECTED
                     view.stopLoading(); 
-                    
-                    // إذا كانت الصفحة فارغة تماماً (أول تشغيل)، فقط حينها يمكن عرض شيء من الكاش
-                    if (view.getUrl() == null || view.getUrl().equals("about:blank")) {
-                        // محاولة استدعاء الرئيسية من المستودع العملاق
-                        view.loadUrl(trustedScheme + "://" + trustedHost + "/");
+
+                    // إذا كان التطبيق يفتح لأول مرة (صفحة بيضاء)، اسحب الرئيسية من الـ Vault
+                    if (view.getUrl() == null || view.getUrl().equals("about:blank") || view.getUrl().equals(BuildConfig.CLIENT_URL)) {
+                         // نطلب من الكاش محاولة إيجاد النسخة الصلبة للرئيسية
+                         view.postDelayed(() -> {
+                             if (!NetworkMonitor.isInternetAvailable(context)) {
+                                 // محاكاة تحميل "نسخة المستودع"
+                                 String homeUrl = BuildConfig.CLIENT_URL;
+                                 view.loadUrl(homeUrl); 
+                             }
+                         }, 100);
                     }
                 }
             }
@@ -399,8 +404,22 @@ public class WebEngineManager {
                 }
 
                 // 🛡️ صمام الأمان: منع الطلبات من الخروج إذا كانت الشبكة ميتة
-                if (!NetworkMonitor.isInternetAvailable(context) && request.isForMainFrame()) {
-                    // [السر الهندسي]: إعادة استجابة فارغة تجعل الويب فيو "يصمت" ولا يظهر صفحة الخطأ
+                if (!NetworkMonitor.isInternetAvailable(context)) {
+                    // 🛡️ [السر الهندسي]: إذا كان الرابط يخص متجرنا، ابحث عنه في الـ Royal Vault فوراً
+                    if (isSameOrigin(request.getUrl())) {
+                        WebResourceResponse vaultResponse = RoyalCacheManager.intercept(request);
+                        if (vaultResponse != null) {
+                            Log.d("RoyalEngine", "🏗️ Serving from Royal Vault: " + request.getUrl());
+                            return vaultResponse;
+                        }
+                        
+                        // إذا لم يجد المورد المعين، وكان طلباً للصفحة (Main Frame)، أرجع "الرئيسية" المخزنة
+                        if (request.isForMainFrame()) {
+                             // هنا يمكن إرجاع نسخة index.html الأساسية لضمان عدم رؤية بياض
+                             return new WebResourceResponse("text/html", "UTF-8", null); // سيصمت المتصفح ويبقى في مكانه
+                        }
+                    }
+                    // صمت مطبق لبقية الطلبات الخارجية
                     return new WebResourceResponse("text/html", "UTF-8", null);
                 }
 
@@ -595,36 +614,15 @@ public class WebEngineManager {
     }
 
     private boolean isSameOrigin(Uri uri) {
-
-        if (uri == null) {
-            return false;
-        }
-
-        if (trustedHost == null) {
-            return false;
-        }
+        if (uri == null || trustedHost == null) return false;
 
         String targetHost = uri.getHost();
-
-        if (targetHost == null) {
-            return false;
-        }
+        if (targetHost == null) return false;
 
         targetHost = targetHost.toLowerCase();
-
         String trusted = trustedHost.toLowerCase();
 
-        String targetScheme = uri.getScheme();
-
-        int port = uri.getPort();
-
-        if (port == -1) {
-            port = "https".equals(targetScheme) ? 443 : 80;
-        }
-
-        return trusted.equalsIgnoreCase(targetHost)
-                || targetHost.endsWith("." + trusted)
-                && trustedScheme.equalsIgnoreCase(targetScheme)
-                && trustedPort == port;
+        // القفل الحسابي الصحيح
+        return (targetHost.equals(trusted) || targetHost.endsWith("." + trusted));
     }
-    }
+                }
