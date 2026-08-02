@@ -8,8 +8,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.Parcel;
 import android.util.Log;
-import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.widget.ImageView;
@@ -19,129 +19,99 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * 👑 ROYAL SESSION SENTINEL (The Immortal Session Core)
+ * 👑 ROYAL SESSION SENTINEL (The Immortal Session Core V2)
  * =========================================================
- * الملحمة الهندسية لاستعادة الحالة (State Persistence)
- * التقنيات: Binary Serialization, Ghost Snapshots, Meta-Tracking.
+ * المعمارية الحتمية: استعادة الحالة الثنائية + الحصانة البصرية.
  */
 public final class RoyalSessionSentinel {
 
     private static final String TAG = "RoyalSentinel";
-    private static final String STATE_FILE = "royal_state.bin";
+    private static final String STATE_FILE = "royal_web_state.bin";
     private static final String SNAPSHOT_FILE = "ghost_snapshot.webp";
     private static final String META_FILE = "session_meta.properties";
 
-    // محرك العمليات الخلفية لضمان 0ms UI Blocking
     private static final ExecutorService diskExecutor = Executors.newSingleThreadExecutor();
     private static final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    private static ImageView ghostOverlay; // اللقطة الشبحية التي تظهر للمستخدم
+    private static ImageView ghostOverlay;
+    private static boolean isResurrecting = false;
 
     private RoyalSessionSentinel() {}
 
     // ==========================================
-    // ❄️ FREEZE: تجميد الجلسة بالكامل (Binary + Visual)
+    // ❄️ FREEZE: تجميد حقيقي (Binary Serialization)
     // ==========================================
     public static void freeze(WebView webView) {
-        if (webView == null || webView.getUrl() == null) return;
+        if (webView == null || webView.getUrl() == null || webView.getWidth() <= 0) return;
 
-        final String currentUrl = webView.getUrl();
-        final int scrollX = webView.getScrollX();
-        final int scrollY = webView.getScrollY();
+        // 1. التقاط الحالة الثنائية للـ WebView (التاريخ + السجل + البيانات)
+        final Bundle webState = new Bundle();
+        webView.saveState(webState);
 
-        // 1. التقاط اللقطة البصرية (Visual Snapshot) فوراً في خيط الواجهة
+        // 2. لقطة بصرية للجودة العالية
         final Bitmap snapshot = captureWebView(webView);
+        final String url = webView.getUrl();
 
         diskExecutor.execute(() -> {
             try {
                 File dir = webView.getContext().getCacheDir();
 
-                // 💾 أ. حفظ الحالة الثنائية (WebView.saveState)
-                Bundle bundle = new Bundle();
-                mainHandler.post(() -> webView.saveState(bundle));
-                // ملحوظة: التخزين الفعلي للـ Bundle يحتاج لعملية خاصة سنقوم بها عبر Parcel
-                
-                // 💾 ب. حفظ اللقطة البصرية مضغوطة (WebP)
+                // 💾 أ. حفظ الـ Bundle كملف ثنائي (السر الذي فات الخبير السابق)
+                saveBundleToDisk(webState, new File(dir, STATE_FILE));
+
+                // 💾 ب. حفظ اللقطة البصرية (WebP)
                 if (snapshot != null) {
-                    File sFile = new File(dir, SNAPSHOT_FILE);
-                    FileOutputStream fos = new FileOutputStream(sFile);
-                    snapshot.compress(Bitmap.CompressFormat.WEBP, 70, fos);
-                    fos.close();
+                    try (FileOutputStream fos = new FileOutputStream(new File(dir, SNAPSHOT_FILE))) {
+                        snapshot.compress(Bitmap.CompressFormat.WEBP, 80, fos);
+                    }
                     snapshot.recycle();
                 }
 
-                // 💾 ج. حفظ الميتا داتا (URL + Scroll)
-                File mFile = new File(dir, META_FILE);
-                java.util.Properties props = new java.util.Properties();
-                props.setProperty("last_url", currentUrl);
-                props.setProperty("scroll_x", String.valueOf(scrollX));
-                props.setProperty("scroll_y", String.valueOf(scrollY));
-                props.setProperty("timestamp", String.valueOf(System.currentTimeMillis()));
-                
-                FileOutputStream mfos = new FileOutputStream(mFile);
-                props.store(mfos, "Royal Session Meta");
-                mfos.close();
+                // 💾 ج. حفظ الإحداثيات
+                saveMetadata(dir, url, webView.getScrollX(), webView.getScrollY());
 
-                Log.i(TAG, "❄️ Session Frozen Successfully: " + currentUrl);
-
+                Log.i(TAG, "❄️ Core Frozen: State & Visuals stored.");
             } catch (Exception e) {
-                Log.e(TAG, "❌ Freeze failed: " + e.getMessage());
+                Log.e(TAG, "❌ Freeze critical error: " + e.getMessage());
             }
         });
     }
 
     // ==========================================
-    // ⚡ RESURRECT: إحياء الجلسة فوراً
+    // ⚡ RESURRECT: إحياء حتمي (Binary Restore)
     // ==========================================
     public static boolean resurrect(WebView webView, Activity activity) {
         if (webView == null || activity == null) return false;
 
         File dir = activity.getCacheDir();
-        File mFile = new File(dir, META_FILE);
-        File sFile = new File(dir, SNAPSHOT_FILE);
+        File stateFile = new File(dir, STATE_FILE);
+        File snapFile = new File(dir, SNAPSHOT_FILE);
 
-        if (!mFile.exists()) return false;
+        if (!stateFile.exists()) return false;
 
-        // 1. عرض اللقطة الشبحية فوراً (Visual Continuity) قبل أي شيء
-        if (sFile.exists()) {
-            showGhostOverlay(activity, sFile);
+        isResurrecting = true;
+
+        // 1. ارفع القناع البصري فوراً (0ms)
+        if (snapFile.exists()) {
+            showGhostOverlay(activity, snapFile);
         }
 
         diskExecutor.execute(() -> {
             try {
-                // 📖 قراءة الميتا داتا
-                java.util.Properties props = new java.util.Properties();
-                FileInputStream fis = new FileInputStream(mFile);
-                props.load(fis);
-                fis.close();
-
-                final String lastUrl = props.getProperty("last_url");
-                final int scrollX = Integer.parseInt(props.getProperty("scroll_x", "0"));
-                final int scrollY = Integer.parseInt(props.getProperty("scroll_y", "0"));
-                long timestamp = Long.parseLong(props.getProperty("timestamp", "0"));
-
-                // 🧠 إستراتيجية الإحياء المشروط: إذا مر أكثر من 24 ساعة، لا تستعد
-                if (System.currentTimeMillis() - timestamp > 24 * 60 * 60 * 1000) {
-                    mainHandler.post(() -> hideGhostOverlay());
-                    return;
-                }
-
+                // 📖 قراءة الحالة الثنائية
+                final Bundle restoredBundle = loadBundleFromDisk(stateFile);
+                
                 mainHandler.post(() -> {
-                    Log.i(TAG, "⚡ Resurrecting Session: " + lastUrl);
-                    
-                    // استعادة الحالة من المستودع العملاق (Cache)
-                    webView.loadUrl(lastUrl);
-
-                    // استعادة السكرول بعد اكتمال الرندر (Commit Visible)
-                    webView.postDelayed(() -> {
-                        webView.scrollTo(scrollX, scrollY);
-                        // تبديل بصري ناعم
+                    if (restoredBundle != null) {
+                        Log.i(TAG, "⚡ Injecting Binary State into Chromium Kernel...");
+                        webView.restoreState(restoredBundle);
+                    } else {
+                        isResurrecting = false;
                         hideGhostOverlay();
-                    }, 500);
+                    }
                 });
-
             } catch (Exception e) {
-                mainHandler.post(() -> hideGhostOverlay());
+                mainHandler.post(() -> { isResurrecting = false; hideGhostOverlay(); });
             }
         });
 
@@ -149,8 +119,62 @@ public final class RoyalSessionSentinel {
     }
 
     // ==========================================
-    // 🛠️ UTILS: أدوات الحماية البصرية
+    // 🛡️ THE SAFE SWITCH: التبديل الآمن عند جاهزية البكسلات
     // ==========================================
+    /**
+     * تُستدعى هذه الدالة حصراً من WebEngineManager.onPageCommitVisible
+     */
+    public static void notifyPageReady() {
+        if (isResurrecting) {
+            // نمهله 100ms إضافية للتأكد من رندرة الخطوط (Fonts)
+            mainHandler.postDelayed(() -> {
+                Log.i(TAG, "🎯 Visual Swap: WebView is live, removing ghost.");
+                hideGhostOverlay();
+                isResurrecting = false;
+            }, 100);
+        }
+    }
+
+    // ==========================================
+    // 🔧 INTERNAL: هندسة الملفات الثنائية
+    // ==========================================
+
+    private static void saveBundleToDisk(Bundle bundle, File file) throws IOException {
+        Parcel parcel = Parcel.obtain();
+        bundle.writeToParcel(parcel, 0);
+        byte[] bytes = parcel.marshall();
+        try (FileOutputStream fos = new FileOutputStream(file)) {
+            fos.write(bytes);
+        } finally {
+            parcel.recycle();
+        }
+    }
+
+    private static Bundle loadBundleFromDisk(File file) throws IOException {
+        byte[] bytes = new byte[(int) file.length()];
+        try (FileInputStream fis = new FileInputStream(file)) {
+            fis.read(bytes);
+        }
+        Parcel parcel = Parcel.obtain();
+        parcel.unmarshall(bytes, 0, bytes.length);
+        parcel.setDataPosition(0);
+        Bundle bundle = new Bundle();
+        bundle.readFromParcel(parcel);
+        parcel.recycle();
+        return bundle;
+    }
+
+    private static void saveMetadata(File dir, String url, int x, int y) throws IOException {
+        File mFile = new File(dir, META_FILE);
+        java.util.Properties p = new java.util.Properties();
+        p.setProperty("url", url);
+        p.setProperty("x", String.valueOf(x));
+        p.setProperty("y", String.valueOf(y));
+        p.setProperty("time", String.valueOf(System.currentTimeMillis()));
+        try (FileOutputStream fos = new FileOutputStream(mFile)) {
+            p.store(fos, null);
+        }
+    }
 
     private static Bitmap captureWebView(WebView webView) {
         try {
@@ -158,39 +182,30 @@ public final class RoyalSessionSentinel {
             Canvas canvas = new Canvas(bitmap);
             webView.draw(canvas);
             return bitmap;
-        } catch (Exception e) {
-            return null;
-        }
+        } catch (Exception e) { return null; }
     }
 
-    private static void showGhostOverlay(Activity activity, File snapshotFile) {
+    private static void showGhostOverlay(Activity activity, File file) {
         mainHandler.post(() -> {
             try {
                 if (ghostOverlay == null) {
                     ghostOverlay = new ImageView(activity);
                     ghostOverlay.setScaleType(ImageView.ScaleType.FIT_XY);
                     ghostOverlay.setBackgroundColor(Color.WHITE);
-                    
-                    // حقن اللقطة في نافذة الـ Activity فوق كل شيء
                     ViewGroup decor = (ViewGroup) activity.getWindow().getDecorView();
-                    decor.addView(ghostOverlay, new ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+                    decor.addView(ghostOverlay, new ViewGroup.LayoutParams(-1, -1));
                 }
-                ghostOverlay.setImageURI(Uri.fromFile(snapshotFile));
+                ghostOverlay.setImageURI(Uri.fromFile(file));
                 ghostOverlay.setAlpha(1f);
                 ghostOverlay.setVisibility(View.VISIBLE);
-                Log.i(TAG, "👻 Ghost Overlay Active: Providing Visual Continuity.");
             } catch (Exception ignored) {}
         });
     }
 
     public static void hideGhostOverlay() {
         if (ghostOverlay != null && ghostOverlay.getVisibility() == View.VISIBLE) {
-            ghostOverlay.animate()
-                    .alpha(0f)
-                    .setDuration(400)
-                    .withEndAction(() -> ghostOverlay.setVisibility(View.GONE))
-                    .start();
+            ghostOverlay.animate().alpha(0f).setDuration(300)
+                    .withEndAction(() -> ghostOverlay.setVisibility(View.GONE)).start();
         }
     }
-}
+            }
