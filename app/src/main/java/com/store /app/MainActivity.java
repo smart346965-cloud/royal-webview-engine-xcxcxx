@@ -75,16 +75,12 @@ public class MainActivity extends AppCompatActivity {
         // 2️⃣ تعيين المحرك الخالد كواجهة أساسية مباشرة (استجابة 0ms)
         setContentView(activeWebView);
 
-        // 🚀 [تعديل ملكي]: محاولة إحياء الجلسة السابقة بدلاً من التحميل الأعمى
-        // سنقوم بتعديل بسيط: إذا نجح الإحياء، لن نقوم بتحميل targetUrl
-        boolean hasSession = RoyalSessionSentinel.resurrect(activeWebView, this);
+        // 🚀 السطر الذهبي: حاول الإحياء الثنائي أولاً
+        boolean sessionRestored = RoyalSessionSentinel.resurrect(activeWebView, this);
 
-        String targetUrl = BuildConfig.CLIENT_URL; 
-        if (!hasSession) {
-            if (activeWebView.getUrl() == null || !activeWebView.getUrl().startsWith("http")) {
-                Log.i(TAG, "🚀 No session found. Booting fresh: " + targetUrl);
-                activeWebView.loadUrl(targetUrl);
-            }
+        if (!sessionRestored) {
+            // إذا لم توجد جلسة، حمّل الرابط الافتراضي
+            activeWebView.loadUrl(BuildConfig.CLIENT_URL);
         }
 
         // 4️⃣ نظام التحكم بالرجوع المستقل نيتف
@@ -283,4 +279,4 @@ public class MainActivity extends AppCompatActivity {
             engineManager.getCapabilitiesHandler().handlePermissionResult(requestCode, grantResults);
         }
     }
-    }
+                }
