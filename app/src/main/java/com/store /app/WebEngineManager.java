@@ -282,22 +282,17 @@ public class WebEngineManager {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request != null && request.isForMainFrame()) {
-                    // 🚀 القاعدة الذهبية: تجميد الواجهة (Freeze UI)
                     Log.w("RoyalEngine", "🛡️ Network Error Intercepted: " + error.getDescription());
                     
-                    // منع الويب فيو من الانتقال لصفحة ERR_INTERNET_DISCONNECTED
+                    // 🚀 منع الويب فيو من عرض صفحة خطأ شبكة الكروميوم
                     view.stopLoading(); 
 
-                    // إذا كان التطبيق يفتح لأول مرة (صفحة بيضاء)، اسحب الرئيسية من الـ Vault
-                    if (view.getUrl() == null || view.getUrl().equals("about:blank") || view.getUrl().equals(BuildConfig.CLIENT_URL)) {
-                         // نطلب من الكاش محاولة إيجاد النسخة الصلبة للرئيسية
-                         view.postDelayed(() -> {
-                             if (!NetworkMonitor.isInternetAvailable(context)) {
-                                 // محاكاة تحميل "نسخة المستودع"
-                                 String homeUrl = BuildConfig.CLIENT_URL;
-                                 view.loadUrl(homeUrl); 
-                             }
-                         }, 100);
+                    // في حالة الإقلاع البارد بدون إنترنت، لا نقوم بإطلاق loadUrl مكرر يسبب Loop
+                    if (!NetworkMonitor.isInternetAvailable(context)) {
+                        String currentUrl = view.getUrl();
+                        if (currentUrl == null || "about:blank".equals(currentUrl)) {
+                            Log.i("RoyalEngine", "❄️ Cold Start Offline Error handled cleanly.");
+                        }
                     }
                 }
             }
@@ -403,24 +398,17 @@ public class WebEngineManager {
                     }
                 }
 
-                // 🛡️ صمام الأمان: منع الطلبات من الخروج إذا كانت الشبكة ميتة
+                // 🛡️ صمام الأمان: خدمة جميع طلبات الأوفلاين من الـ Vault وإلغاء الاستجابة الفارغة
                 if (!NetworkMonitor.isInternetAvailable(context)) {
-                    // 🛡️ [السر الهندسي]: إذا كان الرابط يخص متجرنا، ابحث عنه في الـ Royal Vault فوراً
-                    if (isSameOrigin(request.getUrl())) {
-                        WebResourceResponse vaultResponse = RoyalCacheManager.intercept(request);
-                        if (vaultResponse != null) {
-                            Log.d("RoyalEngine", "🏗️ Serving from Royal Vault: " + request.getUrl());
-                            return vaultResponse;
-                        }
-                        
-                        // إذا لم يجد المورد المعين، وكان طلباً للصفحة (Main Frame)، أرجع "الرئيسية" المخزنة
-                        if (request.isForMainFrame()) {
-                             // هنا يمكن إرجاع نسخة index.html الأساسية لضمان عدم رؤية بياض
-                             return new WebResourceResponse("text/html", "UTF-8", null); // سيصمت المتصفح ويبقى في مكانه
-                        }
+                    WebResourceResponse vaultResponse = RoyalCacheManager.intercept(request);
+                    if (vaultResponse != null) {
+                        Log.d("RoyalEngine", "🏗️ Serving from Royal Vault (Offline): " + request.getUrl());
+                        return vaultResponse;
                     }
-                    // صمت مطبق لبقية الطلبات الخارجية
-                    return new WebResourceResponse("text/html", "UTF-8", null);
+                    
+                    // 🚩 إلغاء بروتوكول "الاستجابة الفارغة" الكارثي:
+                    // إرجاع null الصريحة يمنع الكروميوم من رسم صفحة بيضاء برمز 200 OK
+                    return null;
                 }
 
                 // 👑 [تعديل الأولوية القصوى] إدراج الـ .wasm كعنصر نواة فوري لرفع أولوية المعالجة في العتاد
@@ -439,6 +427,12 @@ public class WebEngineManager {
 
                 if (royalResponse != null) {
                     return royalResponse;
+                }
+
+                // 👑 جلب المورد من RoyalCacheManager إذا كان مخزناً مسبقاً
+                WebResourceResponse cachedOnline = RoyalCacheManager.intercept(request);
+                if (cachedOnline != null) {
+                    return cachedOnline;
                 }
                 
                 return super.shouldInterceptRequest(view, request);
@@ -625,4 +619,4 @@ public class WebEngineManager {
         // القفل الحسابي الصحيح
         return (targetHost.equals(trusted) || targetHost.endsWith("." + trusted));
     }
-                }
+    }
