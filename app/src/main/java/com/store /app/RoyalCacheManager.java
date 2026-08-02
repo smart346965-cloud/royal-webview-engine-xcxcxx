@@ -26,6 +26,7 @@ public final class RoyalCacheManager {
 
     // [تعديل جراحي 1: تعريف هيكلية المستودع الصلب]
     private static File vaultDir;
+    private static Context context;
     private static final String[] VAULT_SUBFOLDERS = {"html", "assets", "media", "fonts", "json", "api"};
 
     // 👑 تحويل السقف إلى متغير ديناميكي يلتهم المساحة المتاحة بذكاء
@@ -73,6 +74,7 @@ public final class RoyalCacheManager {
 
     // [تعديل جراحي 3: بناء المستودع في الذاكرة الصلبة]
     public static void init(Context context) {
+        RoyalCacheManager.context = context.getApplicationContext();
         if (vaultDir != null) return;
 
         // 🚩 استخدام getFilesDir لضمان السيادة (النظام لا يمسح هذا المجلد أبداً)
@@ -660,4 +662,4 @@ public final class RoyalCacheManager {
             Log.e(TAG, "Royal Download Manager failed", e);
         }
     }
-            }
+    }
