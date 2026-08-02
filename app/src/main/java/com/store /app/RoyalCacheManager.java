@@ -127,9 +127,19 @@ public final class RoyalCacheManager {
             String subFolder = getVaultFolder(url);
             File file = new File(new File(vaultDir, subFolder), key);
 
-            // 🛡️ إذا كان الإنترنت مقطوعاً والملف موجود في المستودع.. أرجعه فوراً رغماً عن الجميع!
-            if (!NetworkMonitor.isInternetAvailable(context) && file.exists()) {
-                return new WebResourceResponse(getMime(url), null, new BufferedInputStream(new FileInputStream(file)));
+            // 🛡️ حماية الأوفلاين الصارمة: إذا انقطع الإنترنت
+            if (!NetworkMonitor.isInternetAvailable(context)) {
+                if (file.exists()) {
+                    return new WebResourceResponse(getMime(url), null, new BufferedInputStream(new FileInputStream(file)));
+                }
+                // ⚓ إذا كان الملف المطلوب صفحة HTML وغير موجودة كاش، ارجع أحدث صفحة رئيسية مخزنة لمنع الشاشة البيضاء
+                if ("html".equals(subFolder) || getMime(url).equals("text/html")) {
+                    InputStream anchorStream = getOfflineHtmlFallback();
+                    if (anchorStream != null) {
+                        Log.i(TAG, "⚓ Served Offline HTML Anchor for: " + url);
+                        return new WebResourceResponse("text/html", "UTF-8", anchorStream);
+                    }
+                }
             }
 
             // ⚡ L1 RAM
@@ -142,7 +152,7 @@ public final class RoyalCacheManager {
             // 💾 L2 Disk
             if (!file.exists()) return null;
 
-            CacheMeta meta = loadMeta(key);
+            CacheMeta meta = loadMeta(subFolder, key);
 
             if (meta == null) {
                 file.delete();
@@ -298,7 +308,12 @@ public final class RoyalCacheManager {
                     memoryCache.put(key, exact);
                 }
 
-                saveMeta(key, meta);
+                saveMeta(subFolder, key, meta);
+
+                // ⚓ تحديث مرساة الصفحات الأوفلاين لضمان وجود نسخة احتياطية رئيسية دائماً
+                if ("html".equals(subFolder)) {
+                    saveOfflineHtmlAnchor(finalFile);
+                }
 
                 // 🔥 runtime eviction (خفيف)
                 if (new Random().nextInt(20) == 0) {
@@ -328,7 +343,8 @@ public final class RoyalCacheManager {
 
     public static Map<String, String> getValidationHeaders(String url) {
         String key = generateAtomicKey(url);
-        CacheMeta meta = loadMeta(key);
+        String subFolder = getVaultFolder(url);
+        CacheMeta meta = loadMeta(subFolder, key);
 
         if (meta == null) return null;
 
@@ -430,53 +446,60 @@ public final class RoyalCacheManager {
     }
 
     private static void performLRUEviction() {
-
         long startTime = System.nanoTime();
         long memoryBefore = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         boolean success = true;
 
         try {
+            if (vaultDir == null) return;
 
-            File[] files = vaultDir.listFiles();
-            if (files == null) return;
+            List<File> allFiles = new ArrayList<>();
+            long totalSize = 0;
 
-            long total = 0;
-            for (File f : files) {
-
-                if (f.getName().endsWith(".meta"))
-                    continue;
-
-                total += f.length();
-
+            // مسح جميع المجلدات الفرعية الستة واستخراج الملفات الحقيقية
+            for (String sub : VAULT_SUBFOLDERS) {
+                File subDir = new File(vaultDir, sub);
+                File[] files = subDir.listFiles();
+                if (files != null) {
+                    for (File f : files) {
+                        if (f.isFile() && !f.getName().endsWith(".meta") && !f.getName().endsWith(".tmp")) {
+                            allFiles.add(f);
+                            totalSize += f.length();
+                        }
+                    }
+                }
             }
 
-            if (total < MAX_DISK_CACHE) return;
+            // إذا لم يتجاوز السقف المحدد، لا داعي للحذف
+            if (totalSize < MAX_DISK_CACHE) return;
 
-            Arrays.sort(files, new Comparator<File>() {
+            // ترتيب الملفات من الأقدم إلى الأحدث حسب تاريخ آخر تعديل
+            Collections.sort(allFiles, new Comparator<File>() {
                 @Override
                 public int compare(File f1, File f2) {
-                    long diff = f1.lastModified() - f2.lastModified();
-                    return (diff == 0) ? 0 : (diff < 0 ? -1 : 1);
+                    return Long.compare(f1.lastModified(), f2.lastModified());
                 }
             });
 
-            for (File f : files) {
+            // حذف الملفات الأقدم حتى ينخفض الحجم إلى 80% من السقف
+            long targetSize = (long) (MAX_DISK_CACHE * 0.80);
+            for (File f : allFiles) {
+                long fileSize = f.length();
+                File metaFile = new File(f.getAbsolutePath() + ".meta");
 
-                if (f.getName().endsWith(".meta"))
-                    continue;
+                if (metaFile.exists()) metaFile.delete();
+                if (f.delete()) {
+                    totalSize -= fileSize;
+                }
 
-                total -= f.length();
-
-                File meta = new File(f.getAbsolutePath() + ".meta");
-                if (meta.exists()) meta.delete();
-
-                f.delete();
-
-                if (total < MAX_DISK_CACHE * 0.8) break;
+                if (totalSize <= targetSize) break;
             }
+
+            Log.i(TAG, "🧹 Deep LRU Eviction Completed. New Total Size: " + (totalSize / (1024 * 1024)) + " MB");
 
         } catch (Exception e) {
             success = false;
+            Log.e(TAG, "Error during deep LRU eviction", e);
         } finally {
             long latency = (System.nanoTime() - startTime) / 1_000_000;
             long memoryAfter = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
@@ -534,12 +557,13 @@ public final class RoyalCacheManager {
         }
     }
 
-    private static File metaFile(String key) {
-        return new File(vaultDir, key + ".meta");
+    // [تعديل جراحي 1: دوال meta مع subfolder]
+    private static File metaFile(String subFolder, String key) {
+        return new File(new File(vaultDir, subFolder), key + ".meta");
     }
 
-    private static void saveMeta(String key, CacheMeta meta) {
-        try (FileOutputStream fos = new FileOutputStream(metaFile(key))) {
+    private static void saveMeta(String subFolder, String key, CacheMeta meta) {
+        try (FileOutputStream fos = new FileOutputStream(metaFile(subFolder, key))) {
             Properties p = new Properties();
             p.put("expiry", String.valueOf(meta.expiry));
             if (meta.etag != null) p.put("etag", meta.etag);
@@ -549,26 +573,8 @@ public final class RoyalCacheManager {
         } catch (Exception ignored) {}
     }
 
-    // 👑 تحديث وقت انتهاء الصلاحية فقط عند استلام 304 Not Modified
-    public static void updateValidationMeta(String url, Map<String, List<String>> newHeaders) {
-        String key = generateAtomicKey(url);
-        CacheMeta oldMeta = loadMeta(key);
-        
-        if (oldMeta != null) {
-            CacheMeta updatedMeta = parseHeaders(url, newHeaders);
-            if (updatedMeta != null) {
-                // دمج البيانات الجديدة مع القديمة
-                oldMeta.expiry = updatedMeta.expiry;
-                if (updatedMeta.etag != null) oldMeta.etag = updatedMeta.etag;
-                if (updatedMeta.lastModified != null) oldMeta.lastModified = updatedMeta.lastModified;
-                
-                saveMeta(key, oldMeta);
-            }
-        }
-    }
-
-    private static CacheMeta loadMeta(String key) {
-        File f = metaFile(key);
+    private static CacheMeta loadMeta(String subFolder, String key) {
+        File f = metaFile(subFolder, key);
         if (!f.exists()) return null;
 
         try (FileInputStream fis = new FileInputStream(f)) {
@@ -584,6 +590,25 @@ public final class RoyalCacheManager {
 
         } catch (Exception e) {
             return null;
+        }
+    }
+
+    // 👑 تحديث وقت انتهاء الصلاحية فقط عند استلام 304 Not Modified
+    public static void updateValidationMeta(String url, Map<String, List<String>> newHeaders) {
+        String key = generateAtomicKey(url);
+        String subFolder = getVaultFolder(url);
+        CacheMeta oldMeta = loadMeta(subFolder, key);
+        
+        if (oldMeta != null) {
+            CacheMeta updatedMeta = parseHeaders(url, newHeaders);
+            if (updatedMeta != null) {
+                // دمج البيانات الجديدة مع القديمة
+                oldMeta.expiry = updatedMeta.expiry;
+                if (updatedMeta.etag != null) oldMeta.etag = updatedMeta.etag;
+                if (updatedMeta.lastModified != null) oldMeta.lastModified = updatedMeta.lastModified;
+                
+                saveMeta(subFolder, key, oldMeta);
+            }
         }
     }
 
@@ -662,4 +687,49 @@ public final class RoyalCacheManager {
             Log.e(TAG, "Royal Download Manager failed", e);
         }
     }
+
+    // ==========================================
+    // ⚓ OFFLINE ANCHOR HELPERS
+    // ==========================================
+
+    private static void saveOfflineHtmlAnchor(File htmlFile) {
+        try {
+            File htmlDir = new File(vaultDir, "html");
+            File anchorFile = new File(htmlDir, "root_anchor.html");
+            
+            // نسخ أحدث صفحة HTML بنجاح لتكون المرساة الرئيسية
+            FileInputStream fis = new FileInputStream(htmlFile);
+            FileOutputStream fos = new FileOutputStream(anchorFile);
+            byte[] buf = new byte[8192];
+            int len;
+            while ((len = fis.read(buf)) > 0) {
+                fos.write(buf, 0, len);
+            }
+            fos.flush();
+            fos.close();
+            fis.close();
+        } catch (Exception ignored) {}
     }
+
+    private static InputStream getOfflineHtmlFallback() {
+        try {
+            File htmlDir = new File(vaultDir, "html");
+            File anchorFile = new File(htmlDir, "root_anchor.html");
+
+            if (anchorFile.exists() && anchorFile.length() > 0) {
+                return new BufferedInputStream(new FileInputStream(anchorFile));
+            }
+
+            // إذا لم توجد المرساة، ابحث عن أي ملف HTML مخزن داخل المجلد
+            File[] files = htmlDir.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (f.isFile() && !f.getName().endsWith(".meta") && f.length() > 0) {
+                        return new BufferedInputStream(new FileInputStream(f));
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+        }
