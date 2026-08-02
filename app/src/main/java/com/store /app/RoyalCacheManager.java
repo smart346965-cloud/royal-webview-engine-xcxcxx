@@ -24,17 +24,19 @@ public final class RoyalCacheManager {
 
     private static final String TAG = "RoyalCacheManager";
 
-    private static File cacheDir;
+    // [تعديل جراحي 1: تعريف هيكلية المستودع الصلب]
+    private static File vaultDir;
+    private static final String[] VAULT_SUBFOLDERS = {"html", "assets", "media", "fonts", "json", "api"};
 
     // 👑 تحويل السقف إلى متغير ديناميكي يلتهم المساحة المتاحة بذكاء
     private static long MAX_DISK_CACHE;
 
-    // 1. رفع سقف الـ RAM L1 إلى 50 ميجابايت بدلاً من 20 (لسرعة البرق في الصور)
-    private static final int RAM_LIMIT = 50 * 1024 * 1024; 
-    private static final int RAM_THRESHOLD = 5 * 1024 * 1024; // رفع عتبة الترقية للرام إلى 5 ميجا
+    // ترقية الـ RAM لخدمة المستودع الضخم
+    private static final int RAM_LIMIT = 64 * 1024 * 1024; // 64MB لسرعة العرض
+    private static final int RAM_THRESHOLD = 5 * 1024 * 1024;
 
     // [حقن في بداية RoyalCacheManager]
-    private static final long BLIND_TRUST_WINDOW = 100; // نافذة الثقة (100 مللي ثانية)
+    private static final long BLIND_TRUST_WINDOW = 100;
 
     private static final LruCache<String, byte[]> memoryCache =
             new LruCache<String, byte[]>(RAM_LIMIT) {
@@ -69,24 +71,25 @@ public final class RoyalCacheManager {
 
     private RoyalCacheManager() {}
 
+    // [تعديل جراحي 3: بناء المستودع في الذاكرة الصلبة]
     public static void init(Context context) {
-        if (cacheDir != null) return;
+        if (vaultDir != null) return;
 
-        // 👑 التوجيه نحو الذاكرة الخارجية دائماً للحصول على المساحة العملاقة
-        File extCache = context.getExternalCacheDir();
-        cacheDir = new File(extCache != null ? extCache : context.getCacheDir(), "royal_warehouse_v5");
-        if (!cacheDir.exists()) cacheDir.mkdirs();
+        // 🚩 استخدام getFilesDir لضمان السيادة (النظام لا يمسح هذا المجلد أبداً)
+        vaultDir = new File(context.getFilesDir(), "royal_vault_v1");
+        if (!vaultDir.exists()) vaultDir.mkdirs();
 
-        // 🚀 تنفيذ أمر الـ 4 جيجابايت: 
-        // نأخذ 4GB كقيمة ثابتة إذا توفرت المساحة، أو 25% من مساحة الهاتف الفارغة!
-        long usableSpace = cacheDir.getUsableSpace();
-        long targetCache = 4096L * 1024 * 1024; // 4 GB
-        
-        MAX_DISK_CACHE = Math.min(targetCache, (long)(usableSpace * 0.25));
+        // إنشاء المجلدات الفرعية التخصصية
+        for (String sub : VAULT_SUBFOLDERS) {
+            File folder = new File(vaultDir, sub);
+            if (!folder.exists()) folder.mkdirs();
+        }
+
+        // تحديد سقف الـ 4 جيجابايت أو المساحة المتاحة
+        long usableSpace = vaultDir.getUsableSpace();
+        MAX_DISK_CACHE = Math.min(4096L * 1024 * 1024, (long)(usableSpace * 0.40));
                          
-        Log.i(TAG, "🏗️ Royal Warehouse Initialized: " + (MAX_DISK_CACHE / (1024 * 1024)) + " MB Allocated.");
-
-        performLRUEviction();
+        Log.i(TAG, "🏗️ Royal Vault Active: 4GB Capacity Primed at FilesDir.");
     }
 
     // ==========================================
@@ -100,7 +103,7 @@ public final class RoyalCacheManager {
         boolean success = true;
 
         try {
-            if (cacheDir == null) return null;
+            if (vaultDir == null) return null;
 
             String url = request.getUrl().toString();
             if (!"GET".equalsIgnoreCase(request.getMethod())) return null;
@@ -119,6 +122,13 @@ public final class RoyalCacheManager {
             maybeEvict();
 
             String key = generateAtomicKey(url);
+            String subFolder = getVaultFolder(url);
+            File file = new File(new File(vaultDir, subFolder), key);
+
+            // 🛡️ إذا كان الإنترنت مقطوعاً والملف موجود في المستودع.. أرجعه فوراً رغماً عن الجميع!
+            if (!NetworkMonitor.isInternetAvailable(context) && file.exists()) {
+                return new WebResourceResponse(getMime(url), null, new BufferedInputStream(new FileInputStream(file)));
+            }
 
             // ⚡ L1 RAM
             byte[] mem = memoryCache.get(key);
@@ -128,7 +138,6 @@ public final class RoyalCacheManager {
             }
 
             // 💾 L2 Disk
-            File file = new File(cacheDir, key);
             if (!file.exists()) return null;
 
             CacheMeta meta = loadMeta(key);
@@ -139,28 +148,20 @@ public final class RoyalCacheManager {
             }
 
             // 👑 تطبيق معمارية Stale-While-Revalidate (العرض الفوري والتحديث بالخلفية)
-            // [تعديل جراحي في RoyalCacheManager.java]
-
-            // 1. استدعاء قرار النواة (الذي يتم تمريره عبر الجسر أو حسابه محلياً بنفس المنطق)
             String strategy = "DEFAULT"; 
             if (url.endsWith(".js") || url.endsWith(".css")) {
-                // نحن نستخدم نفس منطق الـ C++ هنا لضمان الانسجام
                 strategy = "BINARY_TRUST_CACHE"; 
             }
 
             long now = System.currentTimeMillis();
 
-            // 2. تطبيق سياسة التمرد الصارم
             if (meta != null) {
                 if ("BINARY_TRUST_CACHE".equals(strategy)) {
-                    // 👑 تمرد النواة: حتى لو انتهى الوقت، سنمرر الملف فوراً من الذاكرة
-                    // ونحدث في الخلفية فقط إذا مر أكثر من أسبوع
                     if (now - meta.created > 7L * 24 * 60 * 60 * 1000) {
                         RoyalNetworkEngine.revalidateInBackground(url, getValidationHeaders(url));
                     }
                     Log.d(TAG, "🛡️ Stubborn Cache Access: " + url);
                 } else if (now > meta.expiry) {
-                    // التحديث العادي للموارد الأخرى
                     RoyalNetworkEngine.revalidateInBackground(url, getValidationHeaders(url));
                 }
             }
@@ -229,12 +230,13 @@ public final class RoyalCacheManager {
         boolean success = true;
 
         try {
-            if (cacheDir == null) return;
+            if (vaultDir == null) return;
             if (!isCacheable(url)) return;
 
             maybeEvict();
 
             String key = generateAtomicKey(url);
+            String subFolder = getVaultFolder(url);
 
             // 🔒 atomic lock
             if (!writingNow.add(key)) return;
@@ -243,11 +245,16 @@ public final class RoyalCacheManager {
                 CacheMeta meta = parseHeaders(url, headers);
                 if (meta == null) return;
 
-                File finalFile = new File(cacheDir, key);
+                // [تعديل جراحي 6: داخل دالة store]
+                // 🚩 التمرد على الرؤوس: إذا كان الملف (JS, CSS, HTML, JSON) 
+                // سنقوم بتخزينه حتى لو قال الخادم no-store
+                File finalFile = new File(new File(vaultDir, subFolder), key);
+
+                // منع تكرار الكتابة إذا كان الملف موجوداً وحجمه سليم
                 if (finalFile.exists() && finalFile.length() > 0) return;
 
                 // 🛡️ الكتابة في ملف مؤقت أولاً (Atomic Write)
-                File tmpFile = new File(cacheDir, key + ".tmp");
+                File tmpFile = new File(new File(vaultDir, subFolder), key + ".tmp");
                 FileOutputStream fos = new FileOutputStream(tmpFile);
 
                 BufferedInputStream bis = new BufferedInputStream(inputStream);
@@ -349,6 +356,18 @@ public final class RoyalCacheManager {
         return true; 
     }
 
+    // [تعديل جراحي 4: محرك تصنيف الموارد]
+    private static String getVaultFolder(String url) {
+        String u = url.toLowerCase();
+        if (u.contains(".js") || u.contains(".mjs")) return "assets";
+        if (u.contains(".css")) return "assets";
+        if (u.contains(".json")) return "json";
+        if (u.contains("/api/")) return "api";
+        if (u.contains(".woff") || u.contains(".ttf") || u.contains(".otf")) return "fonts";
+        if (u.contains(".png") || u.contains(".jpg") || u.contains(".webp") || u.contains(".avif") || u.contains(".gif")) return "media";
+        return "html";
+    }
+
     private static long resolveTTL(String url) {
 
         String u = url.toLowerCase(Locale.US);
@@ -416,7 +435,7 @@ public final class RoyalCacheManager {
 
         try {
 
-            File[] files = cacheDir.listFiles();
+            File[] files = vaultDir.listFiles();
             if (files == null) return;
 
             long total = 0;
@@ -474,14 +493,12 @@ public final class RoyalCacheManager {
     // 🔧 UTILS
     // ==========================================
 
-    // [تعديل جراحي في RoyalCacheManager.java]
-    // هذه الدالة هي النسخة الجاوية من كود الـ C++ في Guardian
+    // [تعديل جراحي 2: خوارزمية FNV-1a 64-bit الصارمة]
     private static String generateAtomicKey(String input) {
-        long hash = 0x811c9dc5L; // نفس الـ Offset الأساسي في C++
+        long hash = 0xcbf29ce484222325L; // FNV_offset_basis 64-bit
         for (int i = 0; i < input.length(); i++) {
             hash ^= input.charAt(i);
-            hash *= 0x01000193L; // نفس الـ Prime الثنائي
-            hash &= 0xffffffffL; // ضمان البقاء في نطاق 32 بت
+            hash *= 0x100000001b3L; // FNV_prime 64-bit
         }
         return Long.toHexString(hash);
     }
@@ -516,7 +533,7 @@ public final class RoyalCacheManager {
     }
 
     private static File metaFile(String key) {
-        return new File(cacheDir, key + ".meta");
+        return new File(vaultDir, key + ".meta");
     }
 
     private static void saveMeta(String key, CacheMeta meta) {
@@ -568,6 +585,7 @@ public final class RoyalCacheManager {
         }
     }
 
+    // [تعديل جراحي 7: داخل دالة parseHeaders]
     private static CacheMeta parseHeaders(
             String url,
             Map<String, List<String>> headers) {
@@ -642,4 +660,4 @@ public final class RoyalCacheManager {
             Log.e(TAG, "Royal Download Manager failed", e);
         }
     }
-                                         }
+            }
