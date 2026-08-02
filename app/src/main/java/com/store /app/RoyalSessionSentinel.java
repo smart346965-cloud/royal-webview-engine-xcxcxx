@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Parcel;
 import android.util.Log;
+import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.WebView;
 import android.widget.ImageView;
@@ -208,4 +209,4 @@ public final class RoyalSessionSentinel {
                     .withEndAction(() -> ghostOverlay.setVisibility(View.GONE)).start();
         }
     }
-            }
+                    }
