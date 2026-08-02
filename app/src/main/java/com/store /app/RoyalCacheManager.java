@@ -262,8 +262,9 @@ public final class RoyalCacheManager {
                 // سنقوم بتخزينه حتى لو قال الخادم no-store
                 File finalFile = new File(new File(vaultDir, subFolder), key);
 
-                // منع تكرار الكتابة إذا كان الملف موجوداً وحجمه سليم
-                if (finalFile.exists() && finalFile.length() > 0) return;
+                // 👑 فك قفل التحديث: منع تكرار الكتابة للملفات الثابتة فقط، والسماح بتحديث صفحات HTML و root_anchor باستمرار
+                boolean isHtmlResource = "html".equals(subFolder) || "text/html".equals(getMime(url));
+                if (!isHtmlResource && finalFile.exists() && finalFile.length() > 0) return;
 
                 // 🛡️ الكتابة في ملف مؤقت أولاً (Atomic Write)
                 File tmpFile = new File(new File(vaultDir, subFolder), key + ".tmp");
@@ -520,9 +521,17 @@ public final class RoyalCacheManager {
 
     // [تعديل جراحي 2: خوارزمية FNV-1a 64-bit الصارمة]
     private static String generateAtomicKey(String input) {
+        if (input == null) return "0";
+        String normalized = input.trim();
+        
+        // 👑 إزالة الشرطة المائلة الأخيرة لضمان أن https://site.com و https://site.com/ يولدان نفس المفتاح تماماً
+        if (normalized.endsWith("/") && normalized.length() > 8) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+
         long hash = 0xcbf29ce484222325L; // FNV_offset_basis 64-bit
-        for (int i = 0; i < input.length(); i++) {
-            hash ^= input.charAt(i);
+        for (int i = 0; i < normalized.length(); i++) {
+            hash ^= normalized.charAt(i);
             hash *= 0x100000001b3L; // FNV_prime 64-bit
         }
         return Long.toHexString(hash);
@@ -536,7 +545,15 @@ public final class RoyalCacheManager {
         }
 
         String sys = URLConnection.guessContentTypeFromName(clean);
-        return sys != null ? sys : "application/octet-stream";
+        if (sys != null) return sys;
+
+        // 👑 تصحيح جراحي: أي رابط لا ينتهي بـ extension نقطي (مثل/ أو المسارات) يتم اعتباره text/html فوراً
+        String lastSegment = clean.contains("/") ? clean.substring(clean.lastIndexOf('/') + 1) : clean;
+        if (!lastSegment.contains(".") || lastSegment.isEmpty()) {
+            return "text/html";
+        }
+
+        return "application/octet-stream";
     }
 
     private static String md5(String input) {
@@ -720,16 +737,21 @@ public final class RoyalCacheManager {
                 return new BufferedInputStream(new FileInputStream(anchorFile));
             }
 
-            // إذا لم توجد المرساة، ابحث عن أي ملف HTML مخزن داخل المجلد
+            // 👑 ترتيب الملفات تنازلياً حسب أحدث تاريخ تعديل واختيار أحدث صفحة HTML حقيقية
             File[] files = htmlDir.listFiles();
-            if (files != null) {
+            if (files != null && files.length > 0) {
+                List<File> htmlFiles = new ArrayList<>();
                 for (File f : files) {
-                    if (f.isFile() && !f.getName().endsWith(".meta") && f.length() > 0) {
-                        return new BufferedInputStream(new FileInputStream(f));
+                    if (f.isFile() && !f.getName().endsWith(".meta") && !f.getName().endsWith(".tmp") && f.length() > 0) {
+                        htmlFiles.add(f);
                     }
+                }
+                if (!htmlFiles.isEmpty()) {
+                    Collections.sort(htmlFiles, (f1, f2) -> Long.compare(f2.lastModified(), f1.lastModified()));
+                    return new BufferedInputStream(new FileInputStream(htmlFiles.get(0)));
                 }
             }
         } catch (Exception ignored) {}
         return null;
     }
-        }
+    }
