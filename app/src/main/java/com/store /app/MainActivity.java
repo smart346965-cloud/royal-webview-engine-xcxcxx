@@ -79,7 +79,12 @@ public class MainActivity extends AppCompatActivity {
         boolean sessionRestored = RoyalSessionSentinel.resurrect(activeWebView, this);
 
         if (!sessionRestored) {
-            // إذا لم توجد جلسة، حمّل الرابط الافتراضي
+            // 🛡️ ضبط وضع الكاش بذكاء عند الإقلاع البارد: إذا كان الجهاز أوفلاين، نجبر الكروميوم على استرجاع الكاش فوراً
+            if (!NetworkMonitor.isInternetAvailable(this)) {
+                activeWebView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+            } else {
+                activeWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+            }
             activeWebView.loadUrl(BuildConfig.CLIENT_URL);
         }
 
@@ -112,8 +117,13 @@ public class MainActivity extends AppCompatActivity {
         // 7️⃣ إنشاء شريط الأوفلاين السينمائي
         createOfflineBar();
         
-        // ربط الشريط بمراقب الشبكة
+        // ربط الشريط بمراقب الشبكة وتحديث وضع الكاش تلقائياً
         NetworkMonitor.setListener(connected -> {
+            if (activeWebView != null) {
+                activeWebView.getSettings().setCacheMode(
+                    connected ? WebSettings.LOAD_DEFAULT : WebSettings.LOAD_CACHE_ELSE_NETWORK
+                );
+            }
             if (connected) {
                 offlineBar.animate().translationY(100).setDuration(400).withEndAction(() -> offlineBar.setVisibility(View.GONE)).start();
             } else {
@@ -279,4 +289,4 @@ public class MainActivity extends AppCompatActivity {
             engineManager.getCapabilitiesHandler().handlePermissionResult(requestCode, grantResults);
         }
     }
-                }
+            }
