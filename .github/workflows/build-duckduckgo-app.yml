@@ -1,42 +1,49 @@
-name: Build DuckDuckGo Core Engine APK
+name: Build DuckDuckGo Engine APK
 
 on:
-  workflow_dispatch: # تشغيل يدوياً بضغطة زر
+  workflow_dispatch:
 
 jobs:
   build-apk:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. سحب مستودع DuckDuckGo الرسمي
+      # 1. سحب مستودع DuckDuckGo
       - name: Checkout DuckDuckGo Android Repository
         uses: actions/checkout@v4
         with:
           repository: 'duckduckgo/android'
           ref: 'main'
 
-      # 2. إعداد بيئة Java 17 المتوافقة مع المشروع
+      # 2. إعداد بيئة Java 17
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: 'gradle'
 
-      # 3. إعطاء صلاحيات التشغيل وتخصيص ذاكرة أسرع لـ Gradle
-      - name: Grant execute permission for gradlew & Setup Memory
+      # 3. إنشاء ملف local.properties وإعدادات الذاكرة لمنع الانهيار
+      - name: Prepare Build Environment & Properties
         run: |
-          chmod +x gradlew
-          echo "org.gradle.jvmargs=-Xmx4096m -Dfile.encoding=UTF-8" >> gradle.properties
+          touch local.properties
+          echo "sdk.dir=$ANDROID_HOME" >> local.properties
+          echo "org.gradle.jvmargs=-Xmx6144m -XX:+UseG1GC" >> gradle.properties
+          echo "org.gradle.daemon=false" >> gradle.properties
+          echo "android.useAndroidX=true" >> gradle.properties
 
-      # 4. تجميع تطبيق الـ APK الصافي بدون تشغيل الاختبارات المعرقلة
+      # 4. إعطاء صلاحيات التشغيل
+      - name: Grant Execute Permission
+        run: chmod +x gradlew
+
+      # 5. تجميع الـ APK بنكهة Internal Debug الخفيفة
       - name: Build App APK
         run: |
-          ./gradlew :app:assembleDebug -x test -x lint --stacktrace
+          ./gradlew :app:assembleInternalDebug -x test -x lint -x detekt --no-daemon
 
-      # 5. رفع ملف الـ APK الناتج ليكون جاهزاً للتحميل والتجربة
+      # 6. رفع ملف الـ APK الناتج
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DuckDuckGo-Engine-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: app/build/outputs/apk/**/*.apk
+
