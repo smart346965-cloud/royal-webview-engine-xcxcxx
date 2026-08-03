@@ -276,66 +276,122 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // =========================================================
-    // 🍏 واجهة الأوفلاين الناتيف (Apple Style)
+    // 🍏 واجهة الأوفلاين الناتيف فائقة الاحترافية (Apple Premium Style)
     // =========================================================
 
-    // [إضافة جراحية في MainActivity.java - بناء الواجهة الناتيف]
     private void createPureOfflineUI() {
-        // 1. الحاوية الرئيسية
+        // 1. الحاوية الرئيسية الشاملة
         pureOfflineUI = new FrameLayout(this);
         pureOfflineUI.setBackgroundColor(Color.parseColor("#F3F4F6"));
-        pureOfflineUI.setVisibility(View.GONE); // مخفية افتراضياً
+        pureOfflineUI.setVisibility(View.GONE);
 
-        // 2. شعار المتجر في المنتصف (R.mipmap.ic_launcher)
+        // ☁️ أ- أيقونة السحابة في الجهة العلوية اليسرى (Top-Left Cloud Icon)
+        ImageView cloudIcon = new ImageView(this);
+        // يمكنك ربط رمز السحابة بملف الـ drawable لديك أو أيقونة ناتيف
+        cloudIcon.setImageResource(R.drawable.ic_cloud_off); // تأكد من وجود ic_cloud_off في مجلد drawable
+        cloudIcon.setAlpha(0.6f);
+        FrameLayout.LayoutParams cloudParams = new FrameLayout.LayoutParams(90, 90, android.view.Gravity.TOP | android.view.Gravity.START);
+        cloudParams.setMargins(60, 80, 0, 0); // ضبط الهوامش من الأعلى واليسار
+        pureOfflineUI.addView(cloudIcon, cloudParams);
+
+        // 🖼️ ب- شعار المتجر في المنتصف (Store Logo)
         ImageView logo = new ImageView(this);
         logo.setImageResource(R.mipmap.ic_launcher);
-        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(320, 320, android.view.Gravity.CENTER);
+        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(280, 280, android.view.Gravity.CENTER);
+        logoParams.bottomMargin = 200; // إزاحة خفيفة للأعلى لإعطاء مساحة للنافذة السفلي
         pureOfflineUI.addView(logo, logoParams);
 
-        // 3. الكرت السفلي الفاخر (Apple Dark Card)
+        // 💳 ج- النافذة المنبثقة السفلية (Bottom Card Sheet)
         LinearLayout bottomCard = new LinearLayout(this);
         bottomCard.setOrientation(LinearLayout.VERTICAL);
-        bottomCard.setBackground(createCardDrawable()); // رسم الخلفية المنحنية
-        bottomCard.setPadding(60, 80, 60, 80);
-        bottomCard.setGravity(android.view.Gravity.CENTER);
+        bottomCard.setBackground(createCardDrawable());
+        bottomCard.setPadding(64, 72, 64, 88);
+        bottomCard.setGravity(android.view.Gravity.CENTER_HORIZONTAL);
 
-        // أ- نقطة الحالة النابضة (Pulsing Red Dot)
-        View statusDot = new View(this);
-        GradientDrawable dot = new GradientDrawable();
-        dot.setShape(GradientDrawable.OVAL);
-        dot.setColor(Color.parseColor("#FF3B30")); // أحمر أبل
-        statusDot.setBackground(dot);
-        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(25, 25);
-        dotParams.bottomMargin = 20;
-        bottomCard.addView(statusDot, dotParams);
+        // 1. العنوان الرئيسي: بخط عريض وحجم 18sp
+        TextView titleMsg = new TextView(this);
+        titleMsg.setText("لا يوجد اتصال بالإنترنت");
+        titleMsg.setTextColor(Color.WHITE);
+        titleMsg.setTextSize(18f);
+        titleMsg.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        titleMsg.setGravity(android.view.Gravity.CENTER);
+        LinearLayout.LayoutParams titleParams = new LinearLayout.LayoutParams(-1, -2);
+        titleParams.bottomMargin = 20;
+        bottomCard.addView(titleMsg, titleParams);
 
-        // ب- نص "لا يتوفر اتصال"
-        TextView msg = new TextView(this);
-        msg.setText("لا يتوفر اتصال بالإنترنت");
-        msg.setTextColor(Color.WHITE);
-        msg.setTextSize(18f);
-        msg.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
-        bottomCard.addView(msg);
+        // 2. الوصف الفرعي: بخط خفيف ولون رمادي متناسق (#9CA3AF / 14sp)
+        TextView subMsg = new TextView(this);
+        subMsg.setText("يبدو أنك غير متصل بالشبكة. يرجى التحقق من الواي فاي أو بيانات الهاتف والمحاولة مجدداً.");
+        subMsg.setTextColor(Color.parseColor("#9CA3AF")); // رمادي داكن ناعم ومتناسق مع الخلفية الداكنة
+        subMsg.setTextSize(14f);
+        subMsg.setGravity(android.view.Gravity.CENTER);
+        subMsg.setLineSpacing(10f, 1.1f);
+        LinearLayout.LayoutParams subParams = new LinearLayout.LayoutParams(-1, -2);
+        subParams.bottomMargin = 56;
+        bottomCard.addView(subMsg, subParams);
 
-        // ج- زر إعادة المحاولة (Retry Button)
-        TextView retryBtn = new TextView(this);
-        retryBtn.setText("إعادة المحاولة");
-        retryBtn.setTextColor(Color.parseColor("#007AFF")); // أزرق أبل
-        retryBtn.setPadding(0, 40, 0, 0);
-        retryBtn.setOnClickListener(v -> {
-            if (NetworkMonitor.isInternetAvailable(this)) {
-                toggleOfflineUI(false);
-                activeWebView.reload();
-            } else {
-                // هزاز خفيف للإشارة إلى فشل المحاولة
-                v.animate().translationX(10).setDuration(50)
-                        .withEndAction(() -> v.animate().translationX(-10).setDuration(50)
-                                .withEndAction(() -> v.setTranslationX(0)).start()).start();
-            }
+        // 3. زر الإجراء الرئيسي (Pill Button - Radius: 12dp / #007AFF)
+        FrameLayout btnContainer = new FrameLayout(this);
+        
+        // تصميم حواف ورسم الزر الدائري (Pill)
+        GradientDrawable btnBg = new GradientDrawable();
+        btnBg.setColor(Color.parseColor("#007AFF")); // أزرق نظام ناتيف
+        btnBg.setCornerRadius(36f); // ما يعادل 12dp لتدوير الزوايا بالكامل
+        btnContainer.setBackground(btnBg);
+        btnContainer.setPadding(0, 32, 0, 32);
+
+        LinearLayout btnContent = new LinearLayout(this);
+        btnContent.setOrientation(LinearLayout.HORIZONTAL);
+        btnContent.setGravity(android.view.Gravity.CENTER);
+
+        // نص الزر الرئيسي
+        TextView retryText = new TextView(this);
+        retryText.setText("🔄  إعادة المحاولة");
+        retryText.setTextColor(Color.WHITE);
+        retryText.setTextSize(15f);
+        retryText.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+
+        // مؤشر التحميل الناعم (Progress Spinner) مخفي افتراضياً
+        ProgressBar btnSpinner = new ProgressBar(this, null, android.R.attr.progressBarStyleSmall);
+        btnSpinner.setVisibility(View.GONE);
+        btnSpinner.getIndeterminateDrawable().setColorFilter(Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN);
+
+        btnContent.addView(retryText);
+        btnContent.addView(btnSpinner);
+        
+        FrameLayout.LayoutParams contentParams = new FrameLayout.LayoutParams(-2, -2, android.view.Gravity.CENTER);
+        btnContainer.addView(btnContent, contentParams);
+
+        // ⚡ التفاعل الذكي للزر عند الضغط
+        btnContainer.setOnClickListener(v -> {
+            // أ- إخفاء النص وإظهار مؤشر التحميل (Spinner) داخل الزر
+            retryText.setVisibility(View.GONE);
+            btnSpinner.setVisibility(View.VISIBLE);
+            btnContainer.setEnabled(false); // منع الضغط المتكرر أثناء الفحص
+
+            // ب- إجراء محاكاة فحص الاتصال الحقيقي
+            new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                if (NetworkMonitor.isInternetAvailable(this)) {
+                    toggleOfflineUI(false);
+                    activeWebView.reload();
+                } else {
+                    // إعادة الزر لوضعه الطبيعي عند فشل الاتصال مع أنيميشن اهتزاز
+                    btnSpinner.setVisibility(View.GONE);
+                    retryText.setVisibility(View.VISIBLE);
+                    btnContainer.setEnabled(true);
+
+                    v.animate().translationX(12).setDuration(50)
+                            .withEndAction(() -> v.animate().translationX(-12).setDuration(50)
+                                    .withEndAction(() -> v.setTranslationX(0)).start()).start();
+                }
+            }, 1000); // إعطاء مهلة 1 ثانية لإشعار المستخدم بالتحقق الفعلي
         });
-        bottomCard.addView(retryBtn);
 
-        // 4. وضع الكرت في أسفل الشاشة
+        LinearLayout.LayoutParams btnLayoutParams = new LinearLayout.LayoutParams(-1, -2);
+        btnLayoutParams.setMargins(16, 0, 16, 0);
+        bottomCard.addView(btnContainer, btnLayoutParams);
+
+        // 4. وضع النافذة في أسفل الشاشة بالكامل
         FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.BOTTOM);
         pureOfflineUI.addView(bottomCard, cardParams);
@@ -346,8 +402,9 @@ public class MainActivity extends AppCompatActivity {
     // دالة لرسم خلفية الكرت المنحنية بامتياز
     private Drawable createCardDrawable() {
         GradientDrawable gd = new GradientDrawable();
-        gd.setColor(Color.parseColor("#1C1C1E")); // رمادي داكن فاخر
-        gd.setCornerRadii(new float[]{80, 80, 80, 80, 0, 0, 0, 0}); // زوايا علوية فقط
+        gd.setColor(Color.parseColor("#1C1C1E")); // رمادي داكن فاخر (Dark Sheet Background)
+        // انحناء الزوايا العلوية بمقدار 24dp (72px) لتصميم أنيق للغاية
+        gd.setCornerRadii(new float[]{72, 72, 72, 72, 0, 0, 0, 0}); 
         return gd;
     }
 
