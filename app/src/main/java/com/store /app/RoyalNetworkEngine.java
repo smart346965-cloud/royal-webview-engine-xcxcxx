@@ -54,16 +54,12 @@ public final class RoyalNetworkEngine {
         System.setProperty("http.maxConnections", "30");
 
         RoyalCacheManager.init(context);
-        
-        // 👑 التخزين الإجباري للإقلاع: تنبؤ وتخزين الرابط الرئيسي للمتجر فوراً عند تشغيل المحرك
+
         primeRootUrl();
 
         Log.i(TAG, "🌐 Royal Network Advisor V5 Engine Active (Root Primed & Anti-Freeze).");
     }
 
-    /**
-     * 👑 دالة التجهيز الإجباري لرابط المتجر الرئيسي
-     */
     public static void primeRootUrl() {
         if (BuildConfig.CLIENT_URL != null && !BuildConfig.CLIENT_URL.isEmpty()) {
             Log.i(TAG, "⚡ Mandatory Root Priming Initiated for: " + BuildConfig.CLIENT_URL);
@@ -76,7 +72,7 @@ public final class RoyalNetworkEngine {
         if (cached != null) return cached;
 
         if (request == null || request.getUrl() == null) return null;
-        
+
         if (request.hasGesture()) {
             notifyRenderIdle();
         }
@@ -95,11 +91,9 @@ public final class RoyalNetworkEngine {
                 u.endsWith(".webp") || u.endsWith(".avif") || u.contains("cdn") || u.contains("img");
     }
 
-    // 👑 استثناء الرابط الرئيسي من كافة شروط الحظر
     private static boolean isSafeToWarmup(String url) {
         if (url == null) return false;
 
-        // 🛡️ الاستثناء السيادي المطلق: الرابط الرئيسي آمن ومطلوب دائماً
         if (url.equalsIgnoreCase(BuildConfig.CLIENT_URL) || url.equalsIgnoreCase(BuildConfig.CLIENT_URL + "/")) {
             return true;
         }
@@ -131,10 +125,9 @@ public final class RoyalNetworkEngine {
     private static void scheduleWarmup(String urlString, boolean isHighPriority) {
         if (urlString == null) return;
 
-        boolean isRootUrl = urlString.equalsIgnoreCase(BuildConfig.CLIENT_URL) || 
+        boolean isRootUrl = urlString.equalsIgnoreCase(BuildConfig.CLIENT_URL) ||
                             urlString.equalsIgnoreCase(BuildConfig.CLIENT_URL + "/");
 
-        // 👑 إذا لم يكن الرابط هو الصفحة الرئيسية، نطبق فلاتر الأمان والأداء العادية
         if (!isRootUrl) {
             if (scrolling) return;
             if (!allowPrefetch || renderBusy || isLowEndDevice) return;
@@ -180,7 +173,7 @@ public final class RoyalNetworkEngine {
                     connection.setUseCaches(true);
                     connection.setInstanceFollowRedirects(true);
 
-                    connection.setRequestProperty("Accept-Encoding", "gzip, deflate, br");
+                    // تم حذف السطر: connection.setRequestProperty("Accept-Encoding", "gzip, deflate, br");
                     connection.setRequestProperty("Accept", "*/*");
                     connection.setRequestProperty("Cache-Control", "max-age=60");
                     connection.setRequestProperty("Connection", "keep-alive");
@@ -189,9 +182,16 @@ public final class RoyalNetworkEngine {
 
                     int code = connection.getResponseCode();
                     if (code >= 200 && code < 300) {
+                        // 👑 معالجة GZIP إذا كان السيرفر يضغط الاستجابة
+                        InputStream is = connection.getInputStream();
+                        String contentEncoding = connection.getContentEncoding();
+                        if (contentEncoding != null && contentEncoding.toLowerCase().contains("gzip")) {
+                            is = new java.util.zip.GZIPInputStream(is);
+                        }
+
                         RoyalCacheManager.store(
                                 urlString,
-                                new BufferedInputStream(connection.getInputStream()),
+                                new BufferedInputStream(is),
                                 connection.getHeaderFields()
                         );
                         Log.i(TAG, "✅ Root/Target URL successfully stored in Royal Vault: " + urlString);
@@ -317,4 +317,4 @@ public final class RoyalNetworkEngine {
             });
         } catch (Exception ignored) {}
     }
-}
+    }
