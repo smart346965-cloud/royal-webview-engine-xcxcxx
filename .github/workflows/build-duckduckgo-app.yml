@@ -1,0 +1,44 @@
+name: Build Bellroy App via DuckDuckGo Core
+
+on:
+  workflow_dispatch: # تشغيل يدوياً بضغطة زر
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. سحب مستودع DuckDuckGo الرسمي
+      - name: Checkout DuckDuckGo Android Repository
+        uses: actions/checkout@v4
+        with:
+          repository: 'duckduckgo/android'
+          ref: 'main'
+
+      # 2. إعداد بيئة Java 17 المتوافقة مع أحدث إصدارات Gradle
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      # 3. حقن رابط متجر Bellroy ورابط البداية في ملفات الإعدادات والثوابت
+      - name: Configure Bellroy Store Target
+        run: |
+          echo "Configuring Bellroy Store as default URL..."
+          # استبدال رابط البحث أو الصفحة الرئيسية الافتراضية برابط bellroy.com
+          find app/src/main/java -type f -name "*.kt" -exec sed -i 's|https://duckduckgo.com|https://bellroy.com|g' {} +
+
+      # 4. تجميع ملف الـ APK (Debug)
+      - name: Build Debug APK
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      # 5. استخراج وتحميل ملف الـ APK الناتج كـ Artifact جاهز للتنزيل
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bellroy-DuckDuckGo-Engine-APK
+          path: app/build/outputs/apk/debug/*.apk
