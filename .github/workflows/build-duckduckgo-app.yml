@@ -23,7 +23,7 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      # 3. إعداد بيئة الضغط وتجريد ملفات C++ وتفعيل R8
+      # 3. إعداد بيئة الضغط وتفعيل R8 (تم إزالة الخيار الملغى)
       - name: Prepare Build Environment & Optimize Size
         run: |
           touch local.properties
@@ -34,9 +34,6 @@ jobs:
           echo "org.gradle.daemon=false" >> gradle.properties
           echo "android.useAndroidX=true" >> gradle.properties
           echo "android.enableR8.fullMode=true" >> gradle.properties
-          
-          # ضغط وتجريد مكتبات C++ Native لمنع تضخم الحجم
-          echo "android.bundle.enableUncompressedNativeLibs=false" >> gradle.properties
 
       # 4. إعطاء صلاحيات التشغيل
       - name: Grant Execute Permission
