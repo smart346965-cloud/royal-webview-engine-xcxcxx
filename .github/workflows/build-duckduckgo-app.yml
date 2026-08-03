@@ -35,10 +35,10 @@ jobs:
       - name: Grant Execute Permission
         run: chmod +x gradlew
 
-      # 5. تجميع الـ APK (بدون -x detekt)
+      # 5. تجميع النسخة العامة (assembleDebug)
       - name: Build App APK
         run: |
-          ./gradlew :app:assembleInternalDebug -x test -x lint --no-daemon
+          ./gradlew :app:assembleDebug -x test -x lint --no-daemon
 
       # 6. رفع ملف الـ APK الناتج
       - name: Upload APK Artifact
