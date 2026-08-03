@@ -36,14 +36,14 @@ jobs:
       - name: Grant Execute Permission
         run: chmod +x gradlew
 
-      # 5. تجميع الـ APK للـ 64-bit الحديثة وحل مشكلة CMake
+      # 5. تجميع الـ APK للـ 64-bit الحديثة
       - name: Build App APK
         run: |
           ./gradlew :app:assembleDebug -x test -x lint -Pandroid.injected.build.abi=arm64-v8a --no-daemon
 
-      # 6. رفع ملف الـ APK الناتج
+      # 6. البحث عن أي ملف APK تم توليده ورفعه فوراً
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: DuckDuckGo-Engine-APK
-          path: app/build/outputs/apk/**/*.apk
+          path: '**/*.apk'
