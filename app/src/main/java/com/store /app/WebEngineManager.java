@@ -282,22 +282,17 @@ public class WebEngineManager {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 if (request != null && request.isForMainFrame()) {
-                    Log.w("RoyalEngine", "🛡️ Network Error Intercepted: " + error.getDescription());
+                    // 🚀 القاعدة الذهبية: إذا انقطع الإنترنت، لا تفعل شيئاً (Freeze UI)
+                    // لا تحمل صفحة أوفلاين، لا تمسح الشاشة. فقط ابقَ مكانك.
+                    Log.w("RoyalEngine", "🛡️ Connection Drop Detected. Freezing UI to prevent Chrome Error Page.");
                     
-                    // 🚀 إيقاف محرك الكروميوم فوراً لمنع عرض صفحة الخطأ الصفراء/الرمادية
+                    // منع الويب فيو من إكمال عملية التحويل لصفحة الخطأ
                     view.stopLoading(); 
-
-                    if (!NetworkMonitor.isInternetAvailable(context)) {
-                        // 👑 تحويل فوري للمتسخدم للنسخة الأوفلاين المحلية لمنع شاشة كروم الكارثية
-                        view.post(() -> {
-                            java.io.File anchor = new java.io.File(context.getFilesDir(), "royal_vault_v1/html/root_anchor.html");
-                            if (anchor.exists()) {
-                                view.loadUrl("file://" + anchor.getAbsolutePath());
-                                Log.i("RoyalEngine", "⚓ Offline Fallback Loaded via Local Anchor File.");
-                            } else {
-                                Log.i("RoyalEngine", "❄️ Cold Start Offline Error handled cleanly.");
-                            }
-                        });
+                    
+                    // إذا كانت الصفحة فارغة تماماً (أول تشغيل)، فقط حينها يمكن عرض شيء من الكاش
+                    if (view.getUrl() == null || view.getUrl().equals("about:blank")) {
+                        // محاولة استدعاء الرئيسية من المستودع العملاق
+                        view.loadUrl(trustedScheme + "://" + trustedHost + "/");
                     }
                 }
             }
@@ -403,19 +398,10 @@ public class WebEngineManager {
                     }
                 }
 
-                // 🛡️ صمام الأمان الملكي: خدمة جميع طلبات الأوفلاين وتوفير مرساة الصفحة الرئيسية
-                if (!NetworkMonitor.isInternetAvailable(context)) {
-                    WebResourceResponse vaultResponse = RoyalCacheManager.intercept(request);
-                    if (vaultResponse != null) {
-                        Log.d("RoyalEngine", "🏗️ Serving from Royal Vault (Offline): " + request.getUrl());
-                        return vaultResponse;
-                    }
-                    
-                    // إذا كان الطلب للإطار الرئيسي HTML، لا نرجع null بل نطلب المرساة مباشرة
-                    if (request.isForMainFrame()) {
-                        Log.w("RoyalEngine", "⚠️ Main Frame requested offline without exact key match. Serving Root Anchor.");
-                    }
-                    return null;
+                // 🛡️ صمام الأمان: منع الطلبات من الخروج إذا كانت الشبكة ميتة
+                if (!NetworkMonitor.isInternetAvailable(context) && request.isForMainFrame()) {
+                    // [السر الهندسي]: إعادة استجابة فارغة تجعل الويب فيو "يصمت" ولا يظهر صفحة الخطأ
+                    return new WebResourceResponse("text/html", "UTF-8", null);
                 }
 
                 // 👑 [تعديل الأولوية القصوى] إدراج الـ .wasm كعنصر نواة فوري لرفع أولوية المعالجة في العتاد
@@ -434,12 +420,6 @@ public class WebEngineManager {
 
                 if (royalResponse != null) {
                     return royalResponse;
-                }
-
-                // 👑 جلب المورد من RoyalCacheManager إذا كان مخزناً مسبقاً
-                WebResourceResponse cachedOnline = RoyalCacheManager.intercept(request);
-                if (cachedOnline != null) {
-                    return cachedOnline;
                 }
                 
                 return super.shouldInterceptRequest(view, request);
@@ -615,15 +595,36 @@ public class WebEngineManager {
     }
 
     private boolean isSameOrigin(Uri uri) {
-        if (uri == null || trustedHost == null) return false;
+
+        if (uri == null) {
+            return false;
+        }
+
+        if (trustedHost == null) {
+            return false;
+        }
 
         String targetHost = uri.getHost();
-        if (targetHost == null) return false;
+
+        if (targetHost == null) {
+            return false;
+        }
 
         targetHost = targetHost.toLowerCase();
+
         String trusted = trustedHost.toLowerCase();
 
-        // القفل الحسابي الصحيح
-        return (targetHost.equals(trusted) || targetHost.endsWith("." + trusted));
+        String targetScheme = uri.getScheme();
+
+        int port = uri.getPort();
+
+        if (port == -1) {
+            port = "https".equals(targetScheme) ? 443 : 80;
+        }
+
+        return trusted.equalsIgnoreCase(targetHost)
+                || targetHost.endsWith("." + trusted)
+                && trustedScheme.equalsIgnoreCase(targetScheme)
+                && trustedPort == port;
     }
             }
