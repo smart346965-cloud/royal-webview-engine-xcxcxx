@@ -2,6 +2,8 @@ package com.store.app;
 
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -15,6 +17,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -37,6 +40,10 @@ public class MainActivity extends AppCompatActivity {
     private WebView activeWebView;
     private ProgressBar progressBar;
     private TextView offlineBar;
+
+    // [تعديل في MainActivity.java - منطقة التعريفات]
+    private FrameLayout pureOfflineUI; // الحاوية الكبرى لواجهة أوفلاين
+    private boolean isOfflineUIVisible = false;
 
     private long splashStartTime = 0;
 
@@ -115,20 +122,41 @@ public class MainActivity extends AppCompatActivity {
         SystemUI.applyKingMode(this, activeWebView);
         SystemUI.setDynamicIcons(this.getWindow(), true);
 
+        // [بناء واجهة الأوفلاين الناتيف فوراً]
+        createPureOfflineUI();
+
         // 6️⃣ بناء وتجهيز طبقة شاشة التحميل (Splash Screen Overlay)
         setupSplashScreen();
 
         // 7️⃣ إنشاء شريط الأوفلاين السينمائي
         createOfflineBar();
 
+        // 🚀 فحص الإنترنت الأولي (عند الإقلاع)
+        if (!NetworkMonitor.isInternetAvailable(this)) {
+            toggleOfflineUI(true);
+        }
+
         // ربط الشريط بمراقب الشبكة
         NetworkMonitor.setListener(connected -> {
             if (connected) {
-                offlineBar.animate().translationY(100).setDuration(400).withEndAction(() -> offlineBar.setVisibility(View.GONE)).start();
+                if (isOfflineUIVisible) toggleOfflineUI(false);
+                // إخفاء الشريط النحيف أيضاً إذا كان ظاهراً
+                if (offlineBar != null) {
+                    offlineBar.animate().translationY(100).setDuration(400).withEndAction(() -> offlineBar.setVisibility(View.GONE)).start();
+                }
+
+                // إعادة تحميل الموقع تلقائياً إذا كنا في صفحة بيضاء
+                if (activeWebView.getUrl() == null || activeWebView.getUrl().equals("about:blank")) {
+                    runOnUiThread(() -> activeWebView.loadUrl(BuildConfig.CLIENT_URL));
+                }
             } else {
-                offlineBar.setVisibility(View.VISIBLE);
-                offlineBar.setTranslationY(100);
-                offlineBar.animate().translationY(0).setDuration(400).start();
+                // إذا كنا في بداية التشغيل، اظهر الواجهة الكبيرة، وإلا اظهر الشريط النحيف فقط
+                if (activeWebView.getUrl() == null || activeWebView.getUrl().equals("about:blank")) {
+                    toggleOfflineUI(true);
+                } else if (offlineBar != null) {
+                    offlineBar.setVisibility(View.VISIBLE);
+                    offlineBar.animate().translationY(0).setDuration(400).start();
+                }
             }
         });
     }
@@ -248,6 +276,99 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // =========================================================
+    // 🍏 واجهة الأوفلاين الناتيف (Apple Style)
+    // =========================================================
+
+    // [إضافة جراحية في MainActivity.java - بناء الواجهة الناتيف]
+    private void createPureOfflineUI() {
+        // 1. الحاوية الرئيسية
+        pureOfflineUI = new FrameLayout(this);
+        pureOfflineUI.setBackgroundColor(Color.parseColor("#F3F4F6"));
+        pureOfflineUI.setVisibility(View.GONE); // مخفية افتراضياً
+
+        // 2. شعار المتجر في المنتصف (R.mipmap.ic_launcher)
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.mipmap.ic_launcher);
+        FrameLayout.LayoutParams logoParams = new FrameLayout.LayoutParams(320, 320, android.view.Gravity.CENTER);
+        pureOfflineUI.addView(logo, logoParams);
+
+        // 3. الكرت السفلي الفاخر (Apple Dark Card)
+        LinearLayout bottomCard = new LinearLayout(this);
+        bottomCard.setOrientation(LinearLayout.VERTICAL);
+        bottomCard.setBackground(createCardDrawable()); // رسم الخلفية المنحنية
+        bottomCard.setPadding(60, 80, 60, 80);
+        bottomCard.setGravity(android.view.Gravity.CENTER);
+
+        // أ- نقطة الحالة النابضة (Pulsing Red Dot)
+        View statusDot = new View(this);
+        GradientDrawable dot = new GradientDrawable();
+        dot.setShape(GradientDrawable.OVAL);
+        dot.setColor(Color.parseColor("#FF3B30")); // أحمر أبل
+        statusDot.setBackground(dot);
+        LinearLayout.LayoutParams dotParams = new LinearLayout.LayoutParams(25, 25);
+        dotParams.bottomMargin = 20;
+        bottomCard.addView(statusDot, dotParams);
+
+        // ب- نص "لا يتوفر اتصال"
+        TextView msg = new TextView(this);
+        msg.setText("لا يتوفر اتصال بالإنترنت");
+        msg.setTextColor(Color.WHITE);
+        msg.setTextSize(18f);
+        msg.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
+        bottomCard.addView(msg);
+
+        // ج- زر إعادة المحاولة (Retry Button)
+        TextView retryBtn = new TextView(this);
+        retryBtn.setText("إعادة المحاولة");
+        retryBtn.setTextColor(Color.parseColor("#007AFF")); // أزرق أبل
+        retryBtn.setPadding(0, 40, 0, 0);
+        retryBtn.setOnClickListener(v -> {
+            if (NetworkMonitor.isInternetAvailable(this)) {
+                toggleOfflineUI(false);
+                activeWebView.reload();
+            } else {
+                // هزاز خفيف للإشارة إلى فشل المحاولة
+                v.animate().translationX(10).setDuration(50)
+                        .withEndAction(() -> v.animate().translationX(-10).setDuration(50)
+                                .withEndAction(() -> v.setTranslationX(0)).start()).start();
+            }
+        });
+        bottomCard.addView(retryBtn);
+
+        // 4. وضع الكرت في أسفل الشاشة
+        FrameLayout.LayoutParams cardParams = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, android.view.Gravity.BOTTOM);
+        pureOfflineUI.addView(bottomCard, cardParams);
+
+        addContentView(pureOfflineUI, new ViewGroup.LayoutParams(-1, -1));
+    }
+
+    // دالة لرسم خلفية الكرت المنحنية بامتياز
+    private Drawable createCardDrawable() {
+        GradientDrawable gd = new GradientDrawable();
+        gd.setColor(Color.parseColor("#1C1C1E")); // رمادي داكن فاخر
+        gd.setCornerRadii(new float[]{80, 80, 80, 80, 0, 0, 0, 0}); // زوايا علوية فقط
+        return gd;
+    }
+
+    // محرك التبديل بين الـ WebView والواجهة الناتيف
+    private void toggleOfflineUI(boolean show) {
+        isOfflineUIVisible = show;
+        runOnUiThread(() -> {
+            if (show) {
+                pureOfflineUI.setVisibility(View.VISIBLE);
+                pureOfflineUI.setAlpha(0f);
+                pureOfflineUI.animate().alpha(1f).setDuration(500).start();
+                activeWebView.setVisibility(View.GONE);
+            } else {
+                pureOfflineUI.animate().alpha(0f).setDuration(500)
+                        .withEndAction(() -> pureOfflineUI.setVisibility(View.GONE)).start();
+                activeWebView.setVisibility(View.VISIBLE);
+            }
+        });
+    }
+
+    // =========================================================
     // 🔄 نتائج النشاطات والصلاحيات
     // =========================================================
 
@@ -300,4 +421,4 @@ public class MainActivity extends AppCompatActivity {
             engineManager.getCapabilitiesHandler().handlePermissionResult(requestCode, grantResults);
         }
     }
-    }
+                }
