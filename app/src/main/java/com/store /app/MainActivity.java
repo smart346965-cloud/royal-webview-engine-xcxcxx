@@ -18,10 +18,10 @@ import android.os.Looper;
 import android.util.Log;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
+import java.io.File;
 
 /**
  * 👑 MainActivity - النواة الأساسية لإدارة محرك الويب المخصص
- * تم تطهيرها بالكامل من مخلفات الـ TWA لتعمل بأقصى سرعة استجابة (Zero-friction)
  */
 public class MainActivity extends AppCompatActivity {
 
@@ -31,31 +31,30 @@ public class MainActivity extends AppCompatActivity {
     private WebView activeWebView;
     private ProgressBar progressBar;
     private long splashStartTime = 0;
-    private static final long FIXED_SPLASH_TIME = 5000; // قيمة ثابتة 5 ثوانٍ بالتمام والكمال
-    private boolean isPageReady = false; // flag للرندرة
+    private static final long FIXED_SPLASH_TIME = 5000;
+    private boolean isPageReady = false;
     private TextView offlineBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        // 👑 [تعديل جراحي ملكي 1]: استلام التحكم بأنيميشن خروج سبلاش النظام لجعل خروجه ناعماً للغاية
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             getSplashScreen().setOnExitAnimationListener(splashScreenView -> {
-                // تنفيذ أنيميشن شفافية ناعم (Fade-Out) لسبلاش النظام لمنع الاختفاء المفاجئ
                 splashScreenView.animate()
                         .alpha(0f)
-                        .setDuration(500) // 500 ملي ثانية لأنيميشن اختفاء سينمائي
+                        .setDuration(500)
                         .withEndAction(splashScreenView::remove)
                         .start();
             });
         }
 
-        // 🛡️ درع الوميض: مطابقة الخلفية مع لون السبلاش لمنع الوميض الأبيض الصارخ
         setTheme(R.style.AppTheme_NoSplash);
         getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#F3F4F6")));
         
         super.onCreate(savedInstanceState);
 
-        // 🔍 تفعيل محرك الفحص والتشخيص الذكي
+        // 👑 تثبيت وتهيئة محرك الشبكة والتنبؤ والتأكد من إطلاق primeRootUrl()
+        RoyalNetworkEngine.install(getApplicationContext());
+
         try {
             RoyalPanopticon.startAwareness();
             Log.i(TAG, "RoyalPanopticon Engine: Active and running in background.");
@@ -63,32 +62,36 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "Failed to initialize RoyalPanopticon: " + e.getMessage());
         }
 
-        // تفعيل أدوات تصحيح الويب التقنية عبر المتصفح
         WebView.setWebContentsDebuggingEnabled(true);
 
-        // 1️⃣ استدعاء وتهيئة الويب فيو الخالد مباشرة بدون وسطاء
         if (!RoyalWebViewHost.isReady()) {
             RoyalWebViewHost.create(getApplicationContext());
         }
         activeWebView = RoyalWebViewHost.attach(this);
 
-        // 2️⃣ تعيين المحرك الخالد كواجهة أساسية مباشرة (استجابة 0ms)
         setContentView(activeWebView);
 
-        // 🚀 السطر الذهبي: حاول الإحياء الثنائي أولاً
         boolean sessionRestored = RoyalSessionSentinel.resurrect(activeWebView, this);
 
         if (!sessionRestored) {
-            // 🛡️ ضبط وضع الكاش بذكاء عند الإقلاع البارد: إذا كان الجهاز أوفلاين، نجبر الكروميوم على استرجاع الكاش فوراً
+            // 🛡️ معالجة الفتح بدون إنترنت (Cold Start Offline Handshake)
             if (!NetworkMonitor.isInternetAvailable(this)) {
                 activeWebView.getSettings().setCacheMode(WebSettings.LOAD_CACHE_ELSE_NETWORK);
+                
+                // ⚓ التحقق الفوري من وجود مرساة الصفحة الرئيسية الأوفلاين وحقنها فوراً
+                File anchorFile = new File(getFilesDir(), "royal_vault_v1/html/root_anchor.html");
+                if (anchorFile.exists() && anchorFile.length() > 0) {
+                    Log.i(TAG, "⚓ Cold Start Offline: Instantly loading saved Root Anchor!");
+                    activeWebView.loadUrl("file://" + anchorFile.getAbsolutePath());
+                } else {
+                    activeWebView.loadUrl(BuildConfig.CLIENT_URL);
+                }
             } else {
                 activeWebView.getSettings().setCacheMode(WebSettings.LOAD_DEFAULT);
+                activeWebView.loadUrl(BuildConfig.CLIENT_URL);
             }
-            activeWebView.loadUrl(BuildConfig.CLIENT_URL);
         }
 
-        // 4️⃣ نظام التحكم بالرجوع المستقل نيتف
         getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
             @Override
             public void handleOnBackPressed() {
@@ -107,17 +110,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // 5️⃣ الحصانة البصرية وتخصيص شريط النظام بالكامل
         SystemUI.applyKingMode(this, activeWebView);
         SystemUI.setDynamicIcons(this.getWindow(), true);
 
-        // 6️⃣ بناء وتجهيز طبقة شاشة التحميل (Splash Screen Overlay)
         setupSplashScreen();
 
-        // 7️⃣ إنشاء شريط الأوفلاين السينمائي
         createOfflineBar();
         
-        // ربط الشريط بمراقب الشبكة وتحديث وضع الكاش تلقائياً
         NetworkMonitor.setListener(connected -> {
             if (activeWebView != null) {
                 activeWebView.getSettings().setCacheMode(
@@ -138,15 +137,14 @@ public class MainActivity extends AppCompatActivity {
         offlineBar = new TextView(this);
         offlineBar.setText("لا يتوفر اتصال بالإنترنت");
         offlineBar.setTextColor(Color.WHITE);
-        offlineBar.setBackgroundColor(Color.parseColor("#323232")); // أسود يوتيوب الأنيق
+        offlineBar.setBackgroundColor(Color.parseColor("#323232"));
         offlineBar.setGravity(android.view.Gravity.CENTER);
         offlineBar.setPadding(0, 12, 0, 12);
         offlineBar.setTextSize(14f);
-        offlineBar.setVisibility(View.GONE); // مخفي في البداية
+        offlineBar.setVisibility(View.GONE);
 
         FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, 80, android.view.Gravity.BOTTOM);
-        // وضعه فوق أزرار التنقل قليلاً
         params.bottomMargin = 0; 
         addContentView(offlineBar, params);
     }
@@ -154,18 +152,15 @@ public class MainActivity extends AppCompatActivity {
     private void setupSplashScreen() {
         splashStartTime = System.currentTimeMillis();
 
-        // 👑 [تعديل جراحي ملكي 2]: تجميد الشاشة حتى اكتمال الـ 5 ثوانٍ، ثم إطلاق أنيميشن الـ Fade-out
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             findViewById(android.R.id.content).getViewTreeObserver().addOnPreDrawListener(
                 new ViewTreeObserver.OnPreDrawListener() {
                     @Override
                     public boolean onPreDraw() {
                         if (splashRemoved) {
-                            // انقضت الـ 5 ثوانٍ.. نسمح للنظام بالرسم ليبدأ أنيميشن الـ Fade-Out
                             findViewById(android.R.id.content).getViewTreeObserver().removeOnPreDrawListener(this);
                             return true;
                         } else {
-                            // الـ 5 ثوانٍ لم تنتهِ بعد.. جمّد الشاشة بصلابة!
                             return false;
                         }
                     }
@@ -196,14 +191,12 @@ public class MainActivity extends AppCompatActivity {
         engineManager.setSplashStartTime(splashStartTime); 
         engineManager.init();
 
-        // 🚀 الـ Handler المعتمد للـ 5 ثوانٍ
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             if (!splashRemoved) {
                 engineManager.triggerFinalReveal();
             }
         }, FIXED_SPLASH_TIME);
 
-        // 🛡️ تعطيل الاستجابة التلقائية للجسور
         if (RoyalWebViewHost.getBridge() != null) {
             RoyalWebViewHost.getBridge().setOnHideSplashCallback(() -> {
                 Log.i(TAG, "⚡ Page ready, but Splash is LOCKED by engineer's timer.");
@@ -214,7 +207,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onPause() {
         super.onPause();
-        // إيقاف مؤقت للعمليات الرسومية غير النشطة في الخلفية للحفاظ على طاقة الجهاز
         if (activeWebView != null) {
             activeWebView.onPause();
         }
@@ -223,7 +215,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        // استئناف العمليات الرسومية والـ JavaScript فور عودة المستخدم للتطبيق
         if (activeWebView != null) {
             activeWebView.onResume();
         }
@@ -231,17 +222,13 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
-        // 🛡️ التعديل: لا تحمل about:blank، فقط افصل الويب فيو بأمان
         if (activeWebView != null) {
-            // نكتفي بإيقاف العمليات دون مسح السطح الرسومي
             activeWebView.stopLoading();
         }
         RoyalWebViewHost.detach();
         super.onDestroy();
     }
 
-    // 👑 [تعديل جراحي]: الجسر المفقود لاستقبال نتائج الاستوديو ومدير الملفات
-    // هذه الدالة تلتقط الملف/الصورة التي اختارها المستخدم وتعيدها مباشرة إلى محرك الويب
     @Override
     protected void onActivityResult(int requestCode, int resultCode, android.content.Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -251,42 +238,33 @@ public class MainActivity extends AppCompatActivity {
 
             android.net.Uri[] results = null;
 
-            // التحقق من أن المستخدم اختار ملفاً بالفعل ولم يتراجع
             if (resultCode == android.app.Activity.RESULT_OK) {
                 if (data != null) {
                     String dataString = data.getDataString();
                     android.content.ClipData clipData = data.getClipData();
 
-                    // دعم رفع ملفات متعددة (Multiple Files Upload)
                     if (clipData != null) {
                         results = new android.net.Uri[clipData.getItemCount()];
                         for (int i = 0; i < clipData.getItemCount(); i++) {
                             results[i] = clipData.getItemAt(i).getUri();
                         }
                     } 
-                    // دعم رفع ملف واحد
                     else if (dataString != null) {
                         results = new android.net.Uri[]{android.net.Uri.parse(dataString)};
                     }
                 }
             }
 
-            // إرسال النتيجة إلى الويب فيو (سواء كانت ملفات أو null إذا ألغى المستخدم)
             RoyalCapabilitiesEngine.filePathCallback.onReceiveValue(results);
             RoyalCapabilitiesEngine.filePathCallback = null;
         }
     }
 
-    // [تعديل جراحي في MainActivity.java - جسر الصلاحيات]
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        
-        // 🛡️ تمرير نتيجة موافقة المستخدم إلى محرك القدرات
         if (engineManager != null && engineManager.getCapabilitiesHandler() != null) {
-            // إذا كنت تستخدم اسم الكلاس من المهندس (RoyalCapabilitiesEngine)
-            // تأكد من إضافة دالة getCapabilitiesHandler() في WebEngineManager
             engineManager.getCapabilitiesHandler().handlePermissionResult(requestCode, grantResults);
         }
     }
-            }
+}
