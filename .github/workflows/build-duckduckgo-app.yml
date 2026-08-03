@@ -1,4 +1,4 @@
-name: Build DuckDuckGo Engine APK
+name: Build DuckDuckGo Engine Production Release APK
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. سحب مستودع DuckDuckGo مع جلب ملفات الـ C++ الفرعية
+      # 1. سحب مستودع DuckDuckGo مع جلب ملفات C++ الفرعية
       - name: Checkout DuckDuckGo Android Repository
         uses: actions/checkout@v4
         with:
@@ -23,27 +23,43 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
 
-      # 3. إعداد البيئة وتخصيص الذاكرة
-      - name: Prepare Build Environment & Properties
+      # 3. إعداد بيئة الضغط وتجريد ملفات C++ وتفعيل R8
+      - name: Prepare Build Environment & Optimize Size
         run: |
           touch local.properties
           echo "sdk.dir=$ANDROID_HOME" >> local.properties
+          
+          # تخصيص الذاكرة وتفعيل الوضع الكامل لأداة R8
           echo "org.gradle.jvmargs=-Xmx6144m -XX:+UseG1GC" >> gradle.properties
           echo "org.gradle.daemon=false" >> gradle.properties
           echo "android.useAndroidX=true" >> gradle.properties
+          echo "android.enableR8.fullMode=true" >> gradle.properties
+          
+          # ضغط وتجريد مكتبات C++ Native لمنع تضخم الحجم
+          echo "android.bundle.enableUncompressedNativeLibs=false" >> gradle.properties
 
       # 4. إعطاء صلاحيات التشغيل
       - name: Grant Execute Permission
         run: chmod +x gradlew
 
-      # 5. تجميع الـ APK للـ 64-bit الحديثة
-      - name: Build App APK
+      # 5. تجميع نسخة Release المصغرة (معمارية arm64-v8a فقط)
+      - name: Build Optimized Release APK
         run: |
-          ./gradlew :app:assembleDebug -x test -x lint -Pandroid.injected.build.abi=arm64-v8a --no-daemon
+          ./gradlew :app:assembleRelease \
+            -x test \
+            -x lint \
+            -Pandroid.injected.build.abi=arm64-v8a \
+            --no-daemon
 
-      # 6. البحث عن أي ملف APK تم توليده ورفعه فوراً
-      - name: Upload APK Artifact
+      # 6. توقيع الـ APK ومحاذاته (ZipAlign & Sign) ليعمل على الهاتف مباشرة
+      - name: Sign & ZipAlign APK
+        uses: rtrace/uber-apk-signer@v1.3.0
+        with:
+          apk-file: 'app/build/outputs/apk/**/*.apk'
+
+      # 7. رفع ملف الـ APK النهائي الموقّع والمصغّر
+      - name: Upload Production Release APK
         uses: actions/upload-artifact@v4
         with:
-          name: DuckDuckGo-Engine-APK
-          path: '**/*.apk'
+          name: DuckDuckGo-Engine-Release-Signed-APK
+          path: '**/*-aligned-signed.apk'
