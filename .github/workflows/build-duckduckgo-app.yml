@@ -15,14 +15,14 @@ jobs:
           repository: 'duckduckgo/android'
           ref: 'main'
 
-      # 2. إعداد بيئة Java 17
-      - name: Set up JDK 17
+      # 2. إعداد بيئة Java 21 (المطلوبة رسمياً للمشروع)
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
-      # 3. إنشاء ملف local.properties وإعدادات الذاكرة لمنع الانهيار
+      # 3. إعداد البيئة وتخصيص الذاكرة
       - name: Prepare Build Environment & Properties
         run: |
           touch local.properties
@@ -35,7 +35,7 @@ jobs:
       - name: Grant Execute Permission
         run: chmod +x gradlew
 
-      # 5. تجميع الـ APK بنكهة Internal Debug الخفيفة
+      # 5. تجميع الـ APK
       - name: Build App APK
         run: |
           ./gradlew :app:assembleInternalDebug -x test -x lint -x detekt --no-daemon
@@ -46,4 +46,3 @@ jobs:
         with:
           name: DuckDuckGo-Engine-APK
           path: app/build/outputs/apk/**/*.apk
-
