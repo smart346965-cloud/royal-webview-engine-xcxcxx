@@ -49,19 +49,26 @@ jobs:
             -PuseProprietaryFont=false \
             --no-daemon
 
-      # 6. توقيع ومحاذاة الـ APK بأدوات Android SDK الرسمية
+      # 6. توقيع ومحاذاة الـ APK بأدوات Android SDK الرسمية (بحث ديناميكي شامل)
       - name: Sign & ZipAlign APK (Native Android Tools)
         run: |
-          # إنشاء مفتاح توقيع مؤقت معتمد
+          # 1. إنشاء مفتاح توقيع مؤقت معتمد
           keytool -genkey -v -keystore release.keystore -alias androidkey -keyalg RSA -keysize 2048 -validity 10000 -storepass android -keypass android -dname "CN=Android,OU=Dev,O=App,L=City,S=State,C=US"
           
-          # البحث عن ملف الـ APK الناتج
-          RAW_APK=$(find app/build/outputs/apk/ -name "*.apk" | head -n 1)
+          # 2. البحث الديناميكي عن أي ملف APK تم إنتاجه في المشروع
+          RAW_APK=$(find . -type f -name "*.apk" ! -name "*aligned*" ! -name "*signed*" | head -n 1)
           
-          # تحديد مسار أدوات Android Build-Tools
+          echo "تم العثور على ملف الـ APK في المسار: $RAW_APK"
+          
+          if [ -z "$RAW_APK" ]; then
+            echo "خطأ: لم يتم العثور على أي ملف APK مجمع!"
+            exit 1
+          fi
+          
+          # 3. تحديد مسار أدوات Android Build-Tools
           BUILD_TOOLS_DIR=$(ls -d $ANDROID_HOME/build-tools/* | tail -n 1)
           
-          # محاذاة وتوقيع الملف
+          # 4. محاذاة وتوقيع الملف
           $BUILD_TOOLS_DIR/zipalign -v 4 "$RAW_APK" aligned-app.apk
           $BUILD_TOOLS_DIR/apksigner sign --ks release.keystore --ks-pass pass:android --key-pass pass:android --out DuckDuckGo-Release-Signed.apk aligned-app.apk
 
@@ -71,4 +78,3 @@ jobs:
         with:
           name: DuckDuckGo-Engine-Release-Signed-APK
           path: 'DuckDuckGo-Release-Signed.apk'
-
