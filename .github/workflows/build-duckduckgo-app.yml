@@ -8,12 +8,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. سحب مستودع DuckDuckGo
+      # 1. سحب مستودع DuckDuckGo مع جلب ملفات الـ C++ الفرعية
       - name: Checkout DuckDuckGo Android Repository
         uses: actions/checkout@v4
         with:
           repository: 'duckduckgo/android'
           ref: 'main'
+          submodules: 'recursive'
 
       # 2. إعداد بيئة Java 21
       - name: Set up JDK 21
@@ -35,10 +36,10 @@ jobs:
       - name: Grant Execute Permission
         run: chmod +x gradlew
 
-      # 5. تجميع النسخة العامة (assembleDebug)
+      # 5. تجميع الـ APK للـ 64-bit الحديثة وحل مشكلة CMake
       - name: Build App APK
         run: |
-          ./gradlew :app:assembleDebug -x test -x lint --no-daemon
+          ./gradlew :app:assembleDebug -x test -x lint -Pandroid.injected.build.abi=arm64-v8a --no-daemon
 
       # 6. رفع ملف الـ APK الناتج
       - name: Upload APK Artifact
